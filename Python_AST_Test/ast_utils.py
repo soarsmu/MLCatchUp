@@ -19,10 +19,6 @@ def getFunctionName(node):
 # e.g.
 # getFunctionScope("sklearn.dummy.DummyClassifier") should return "sklearn.dummy"
 def getFunctionScope(node):
-    print("\n")
-    print("\n")
-    print_code(node)
-    print(ast.dump(node))
     scope = ""
     currNode = node.func
     # First check whether it has scope. If it has scope, then the function node should be attribute
@@ -47,6 +43,6 @@ def getFunctionScope(node):
         return None
 
 
-
-def getFunctionArguments(node):
-    return node
+# helper function to get the API invocation or function keyword arguments list
+def getKeywordArguments(node):
+    return node.keywords
