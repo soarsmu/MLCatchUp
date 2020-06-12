@@ -27,3 +27,5 @@ paramRemove.transform(tree)
 
 paramRemove = KeywordParamRemover("KMeans", "n_jobs")
 paramRemove.transform(tree)
+
+defaultValueChange = DefaultParamValueTransformer()
