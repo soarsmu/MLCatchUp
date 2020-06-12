@@ -46,3 +46,9 @@ def getFunctionScope(node):
 # helper function to get the API invocation or function keyword arguments list
 def getKeywordArguments(node):
     return node.keywords
+
+# helper function to create a keyword param with a given name and value
+# # keywords=[keyword(arg='strategy', value=Constant(value='stratified', kind=None))
+def createKeywordParam(name, value):
+    return ast.keyword(arg=name, value=Constant(value=value, kind=None))
+
