@@ -1,5 +1,6 @@
 import astunparse
 import ast
+import _ast
 from ast import *
 def print_code(node):
     print(astunparse.unparse(node))
@@ -9,10 +10,6 @@ def print_code(node):
 # getFunctionName("sklearn.dummy.DummyClassifier") should return "DummyClassifier"
 # getFunctionName("DummyClassifier") should also return "Dummy Classifier"
 def getFunctionName(node):
-    print("\n")
-    print("\n")
-    print_code(node)
-    print(ast.dump(node))
     try:
         return node.func.id
     except:
@@ -22,6 +19,32 @@ def getFunctionName(node):
 # e.g.
 # getFunctionScope("sklearn.dummy.DummyClassifier") should return "sklearn.dummy"
 def getFunctionScope(node):
+    print("\n")
+    print("\n")
+    print_code(node)
+    print(ast.dump(node))
+    scope = ""
+    currNode = node.func
+    # First check whether it has scope. If it has scope, then the function node should be attribute
+    # else, the function node should be Name
+    if isinstance(currNode, _ast.Attribute):
+        currNode = currNode.value
+        while isinstance(currNode, _ast.Attribute):
+            if scope == "":
+                scope = currNode.attr
+            else:
+                scope = currNode.attr + "." + scope
+            try:
+                currNode = currNode.value
+            except:
+                break
+        if scope == "":
+            scope = currNode.id
+        else:
+            scope = currNode.id + "." + scope
+        return scope
+    else:
+        return None
 
 
 
