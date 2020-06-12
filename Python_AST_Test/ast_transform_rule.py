@@ -14,12 +14,10 @@ class KeywordParamRemover(ast.NodeTransformer):
         super().__init__()
 
     def visit_Call(self, node: Call):
-        nodeFunction = node.func
-        nodeFuncName = node.func.id
-        # print(ast.dump(node))
+        nodeFuncName = getFunctionName(node)
         if nodeFuncName == self.functionName:
             # Function name is correct
-            listKeywordParam = node.keywords
+            listKeywordParam = getKeywordArguments(node)
             for keyword in listKeywordParam:
                 # print(keyword.arg)
                 if keyword.arg == self.parameterName:
@@ -28,8 +26,9 @@ class KeywordParamRemover(ast.NodeTransformer):
 
     def transform(self, tree):
         print_code(tree)
+
         self.visit(tree)
-        # print(ast.dump(tree))
+
         print_code(tree)
 
 
@@ -41,19 +40,19 @@ class KeywordParamRemover(ast.NodeTransformer):
 class DefaultParamValueTransformer(ast.NodeTransformer):
     functionName = ""
     parameterName = ""
-    parameterNewValue = ""
+    oldDefaultValue = ""
 
-    def __init__(self, fname, pname, pvalue):
+    def __init__(self, fname, pname, oldvalue):
         self.functionName = fname
         self.parameterName = pname
-        self.parameterNewValue = pvalue
+        self.oldDefaultValue = oldvalue
         super().__init__()
 
     def visit_Call(self, node: Call):
-        nodeFuncName = node.func.id
+        nodeFuncName = getFunctionName(node)
         if nodeFuncName == self.functionName:
             # Function name is correct
-            listKeywordParam = node.keywords
+            listKeywordParam = getKeywordArguments(node)
             isKeywordExist = False
             for keyword in listKeywordParam:
                 print(ast.dump(keyword))
@@ -64,6 +63,12 @@ class DefaultParamValueTransformer(ast.NodeTransformer):
                 # If keyword is not exist yet, it means that the old API use the default value which is changed
                 # in the new API. Therefore, we need to create a new node
                 print("Keyword not exist")
+                newParam = createKeywordParam(self.parameterName, self.oldDefaultValue)
+                listKeywordParam.append(newParam)
+
+        # ast.fix_missing_locations(node)
+        print(ast.dump(node))
+        print_code(node)
         return node
 
     def transform(self, tree):
@@ -71,3 +76,4 @@ class DefaultParamValueTransformer(ast.NodeTransformer):
         self.visit(tree)
         # print(ast.dump(tree))
         print_code(tree)
+
