@@ -1,7 +1,7 @@
 import ast
+import _ast
 from ast import *
 from Python_AST_Test.ast_utils import *
-
 
 # Class to remove parameter from an API invocation
 class KeywordParamRemover(ast.NodeTransformer):
@@ -13,7 +13,7 @@ class KeywordParamRemover(ast.NodeTransformer):
         self.parameterName = pname
         super().__init__()
 
-    def visit_Call(self, node: Call):
+    def remove_param(self, node: Call):
         nodeFuncName = getFunctionName(node)
         if nodeFuncName == self.functionName:
             # Function name is correct
@@ -22,6 +22,16 @@ class KeywordParamRemover(ast.NodeTransformer):
                 # print(keyword.arg)
                 if keyword.arg == self.parameterName:
                     listKeywordParam.remove(keyword)
+
+
+    def visit_Call(self, node: Call):
+        nodeFuncName = getFunctionName(node)
+        self.remove_param(node)
+        listScope = recurseScope(node)
+        print(listScope)
+        for n in listScope:
+            if isinstance(n, _ast.Call):
+                self.remove_param(n)
         return node
 
     def transform(self, tree):
@@ -48,7 +58,7 @@ class DefaultParamValueTransformer(ast.NodeTransformer):
         self.oldDefaultValue = oldvalue
         super().__init__()
 
-    def visit_Call(self, node: Call):
+    def default_value_transform(self, node: Call):
         nodeFuncName = getFunctionName(node)
         if nodeFuncName == self.functionName:
             # Function name is correct
@@ -66,9 +76,14 @@ class DefaultParamValueTransformer(ast.NodeTransformer):
                 newParam = createKeywordParam(self.parameterName, self.oldDefaultValue)
                 listKeywordParam.append(newParam)
 
-        # ast.fix_missing_locations(node)
-        print(ast.dump(node))
-        print_code(node)
+    def visit_Call(self, node: Call):
+        nodeFuncName = getFunctionName(node)
+        self.default_value_transform(node)
+        listScope = recurseScope(node)
+        print(listScope)
+        for n in listScope:
+            if isinstance(n, _ast.Call):
+                self.default_value_transform(n)
         return node
 
     def transform(self, tree):
@@ -87,11 +102,20 @@ class ApiNameTransformer(ast.NodeTransformer):
         self.newApiName = newname
         super().__init__()
 
-    def visit_Call(self, node: Call):
+    def name_transformer(self, node: Call):
         nodeFuncName = getFunctionName(node)
         if nodeFuncName == self.functionName:
             # Function name is correct
-            return changeFunctionName(node, self.newApiName)
+            node = changeFunctionName(node, self.newApiName)
+
+    def visit_Call(self, node: Call):
+        nodeFuncName = getFunctionName(node)
+        self.name_transformer(node)
+        listScope = recurseScope(node)
+        print(listScope)
+        for n in listScope:
+            if isinstance(n, _ast.Call):
+                self.name_transformer(n)
         return node
 
     def transform(self, tree):

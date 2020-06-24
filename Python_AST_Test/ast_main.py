@@ -18,14 +18,24 @@ import astunparse
 from Python_AST_Test.ast_utils import *
 from Python_AST_Test.ast_transform_rule import *
 
+default_test = "ast_test.py"
+sklearn_dummyclassifier_file = "../sklearn_testcases/sklearn_dummyclassifier.py"
 
 
-with open("ast_test.py", "r") as source:
+with open(sklearn_dummyclassifier_file, "r") as source:
+# with open(default_test, "r") as source:
     tree = ast.parse(source.read())
-paramRemove = KeywordParamRemover("KMeans", "n_clusters")
-paramRemove.transform(tree)
+# paramRemove = KeywordParamRemover("KMeans", "n_clusters")
+# paramRemove.transform(tree)
 
-paramRemove = KeywordParamRemover("KMeans", "n_jobs")
-paramRemove.transform(tree)
+# defaultTransformer = DefaultParamValueTransformer("KMeans", "n_clusters", 1)
+# defaultTransformer.transform(tree)
 
-defaultValueChange = DefaultParamValueTransformer()
+nameTransformer = ApiNameTransformer("KMeans", "KNotMeans")
+nameTransformer.transform(tree)
+
+# defaultValueChange = DefaultParamValueTransformer("DummyClassifier", "strategy", "stratified")
+# defaultValueChange.transform(tree)
+#
+# apiNameChange = ApiNameTransformer("DummyClassifier", "StupidClassifier")
+# apiNameChange.transform(tree)
