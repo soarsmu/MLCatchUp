@@ -1,9 +1,25 @@
 import astunparse
 import ast
-import _ast
 from ast import *
 def print_code(node):
     print(astunparse.unparse(node))
+
+def getKeywordParameter(node):
+    if (isinstance(node, ast.Call)):
+        print("Something")
+
+def getName(node):
+    try:
+        return node.func.id
+    except:
+        try:
+            return node.func.attr
+        except:
+            try:
+                return node.id
+            except:
+                return node.value.id
+
 
 # helper function to get the API invocation or function name from the node
 # e.g.
