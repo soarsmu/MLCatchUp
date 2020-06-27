@@ -61,6 +61,11 @@ class ApiFormatterVisitor(ast.NodeTransformer):
         self.from_dict = from_import_dict
         self.ass_dict = assign_dict
 
+    def visit_Call(self, node: Call):
+        getOuterMostApi(node)
+        # TODO: Think about how should we convert / replace the name
+        # TODO: String replacement should be easier, but can we do that? refer to DLocator
+
 def separate_api_parameter(node):
     # Loop through the given node from assignment to get all the API Call and keyword
     api_name = getName(node)
@@ -94,3 +99,5 @@ def process_api_format(tree):
     import_dict = importVisitor.import_dictionary
     from_import_dict = fromImportVisitor.from_import_dict
 
+    api_formatter_visitor = ApiFormatterVisitor(import_dict, from_import_dict, assign_dict)
+    api_formatter_visitor.visit(tree)

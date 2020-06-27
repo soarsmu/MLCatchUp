@@ -111,6 +111,11 @@ def recurseScope(node):
 def createKeywordParam(name, value):
     return ast.keyword(arg=name, value=Constant(value=value, kind=None))
 
-
+def getOuterMostApi(node):
+    # print("Full node: " + astunparse.unparse(node))
+    while getScopeNode(node) is not None:
+        node = getScopeNode(node)
+    # print(astunparse.unparse(node))
+    return node
 
 
