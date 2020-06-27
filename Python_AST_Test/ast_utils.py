@@ -1,24 +1,42 @@
 import astunparse
 import ast
 from ast import *
+# from astunparse import unparse
+
 def print_code(node):
     print(astunparse.unparse(node))
 
-def getKeywordParameter(node):
+# helper function to get the API invocation or function keyword arguments list
+# return list of keyword argument name. e.g.
+# getKeywordArguments(sklearn.cluster.KMeans(n_clusters=10).fit(X=[1,2,3])
+# -> [X]
+def getKeywordArguments(node):
+    list_keyword = []
     if (isinstance(node, ast.Call)):
-        print("Something")
+        for keyword in node.keywords:
+            keyword_split = astunparse.unparse(keyword).split("=")
+            keyword_string = keyword_split[0]
+            list_keyword.append(keyword_string)
+    return list_keyword
+
 
 def getName(node):
     try:
-        return node.func.id
+        return node.attr
     except:
         try:
-            return node.func.attr
+            return node.id
         except:
             try:
-                return node.id
+                return node.func.id
             except:
-                return node.value.id
+                try:
+                    return node.func.attr
+                except:
+                    try:
+                        return node.value.id
+                    except:
+                        return node.value.attr
 
 
 # helper function to get the API invocation or function name from the node
@@ -29,7 +47,11 @@ def getFunctionName(node):
     try:
         return node.func.id
     except:
-        return node.func.attr
+        try:
+            return node.func.attr
+        except:
+            print("NODE: " + astunparse.unparse(node))
+            print("DUMP: " + ast.dump(node))
 
 def changeFunctionName(node, newName):
     try:
@@ -42,10 +64,15 @@ def changeFunctionName(node, newName):
 
 
 def getScopeNode(node):
+    print("HASIL PRINT: " + astunparse.unparse(node))
+    print("NODE HERE:" + ast.dump(node))
     try:
         return node.func.value
     except:
-        return None
+        try:
+            return node.value
+        except:
+            return None
 
 def recurseScope(node):
     returnList = []
@@ -84,11 +111,6 @@ def recurseScope(node):
 #         return scope
 #     else:
 #         return None
-
-
-# helper function to get the API invocation or function keyword arguments list
-def getKeywordArguments(node):
-    return node.keywords
 
 # helper function to create a keyword param with a given name and value
 # # keywords=[keyword(arg='strategy', value=Constant(value='stratified', kind=None))
