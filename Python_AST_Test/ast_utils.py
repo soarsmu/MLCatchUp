@@ -47,11 +47,7 @@ def getFunctionName(node):
     try:
         return node.func.id
     except:
-        try:
-            return node.func.attr
-        except:
-            print("NODE: " + astunparse.unparse(node))
-            print("DUMP: " + ast.dump(node))
+        return node.func.attr
 
 def changeFunctionName(node, newName):
     try:
@@ -64,8 +60,6 @@ def changeFunctionName(node, newName):
 
 
 def getScopeNode(node):
-    print("HASIL PRINT: " + astunparse.unparse(node))
-    print("NODE HERE:" + ast.dump(node))
     try:
         return node.func.value
     except:
@@ -116,4 +110,7 @@ def recurseScope(node):
 # # keywords=[keyword(arg='strategy', value=Constant(value='stratified', kind=None))
 def createKeywordParam(name, value):
     return ast.keyword(arg=name, value=Constant(value=value, kind=None))
+
+
+
 
