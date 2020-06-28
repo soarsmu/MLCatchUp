@@ -55,16 +55,73 @@ class FromImportVisitor(ast.NodeVisitor):
         else:
             self.from_import_dict[imported_name] = full_path
 
-class ApiFormatterVisitor(ast.NodeTransformer):
+class ApiFormatterVisitor(ast.NodeVisitor):
     def __init__(self, import_dict, from_import_dict, assign_dict):
         self.imp_dict = import_dict
         self.from_dict = from_import_dict
         self.ass_dict = assign_dict
+        self.return_list = []
 
     def visit_Call(self, node: Call):
-        getOuterMostApi(node)
+        api_name, keywords = separate_api_parameter(node)
+        # print(api_name)
+        name_split = api_name.split(".")
+        outermost_name = name_split[0]
+
+        hasChange = True
+        while hasChange:
+            # first check assignment
+            if outermost_name in self.ass_dict:
+                print()
+                node_lineno = node.lineno
+                # get the correct assignment
+                previous_element = self.ass_dict[outermost_name][0]
+                for element in self.ass_dict[outermost_name]:
+                    element_lineno = element["line_no"]
+                    if element_lineno < node_lineno:
+                        previous_element = element
+                    else:
+                        break
+                # Use the previous element value to replace the node name
+                splitted = previous_element["name"].split(".")
+                name_split.pop(0)
+                # insert from the end to the beginning
+                for item in reversed(splitted):
+                    name_split.insert(0, item)
+                outermost_name = name_split[0]
+            elif outermost_name in self.from_dict:
+                previous_element = self.from_dict[outermost_name]
+                splitted = previous_element.split(".")
+                name_split.pop(0)
+                # insert from the end to the beginning
+                for item in reversed(splitted):
+                    name_split.insert(0, item)
+                outermost_name = name_split[0]
+            elif outermost_name in self.imp_dict:
+                previous_element = self.imp_dict[outermost_name]
+                splitted = previous_element.split(".")
+                name_split.pop(0)
+                # insert from the end to the beginning
+                for item in reversed(splitted):
+                    name_split.insert(0, item)
+                outermost_name = name_split[0]
+            else:
+                hasChange = False
+
+        api_object = {}
+        api_new_name = name_split[0]
+        name_split.pop(0)
+        for part in name_split:
+            api_new_name = api_new_name + "." + part
+        api_object["name"] = api_new_name
+        api_object["key"] = keywords
+        api_object["line_no"] = node.lineno
+        self.return_list.append(api_object)
+        # getOuterMostApi(node)
         # TODO: Think about how should we convert / replace the name
         # TODO: String replacement should be easier, but can we do that? refer to DLocator
+        # TODO: MIGHT NOT NEED TO REPLACE SINCE WE ONLY THIS API FORMAT FOR FILTER?
+        # TODO: THINK ABOUT CHANGE OF API CALL PARENT REFERENCE deprecation, maybe we need to process the import
 
 def separate_api_parameter(node):
     # Loop through the given node from assignment to get all the API Call and keyword
@@ -101,3 +158,6 @@ def process_api_format(tree):
 
     api_formatter_visitor = ApiFormatterVisitor(import_dict, from_import_dict, assign_dict)
     api_formatter_visitor.visit(tree)
+
+    list_api = api_formatter_visitor.return_list
+    print(list_api.__str__())
