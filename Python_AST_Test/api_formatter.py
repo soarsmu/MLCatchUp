@@ -10,18 +10,27 @@ class AssignmentVisitor(ast.NodeVisitor):
     def visit_Assign(self, node: Assign):
         # print(unparse(node))
         # print(ast.dump(node))
-        assignment_target = node.targets[0].id
         assignment_value = node.value
-        # print(assignment_target)
-        # print(unparse(assignment_value))
-        api_name, api_keywords = separate_api_parameter(assignment_value)
+        if (isinstance(assignment_value, Call) or isinstance(assignment_value, Attribute) or isinstance(assignment_value, Name)) \
+                and isinstance(node.targets[0], Name):
+            # Special case if target is attribute
+            # It seems complex and unlikely, so skip if the target is an instance of attribute
+            # if (isinstance(node.targets[0], Attribute)):
+            #     assignment_target = node.targets[0].id
+            # else:
+            #     assignment_target = node.targets[0].id
 
-        dict_content = {}
-        dict_content["name"] = api_name
-        dict_content["key"] = api_keywords
-        dict_content["line_no"] = node.lineno
-        self.assignment_dictionary[assignment_target] = []
-        self.assignment_dictionary[assignment_target].append(dict_content)
+            assignment_target = node.targets[0].id
+            # print(assignment_target)
+            # print(unparse(assignment_value))
+            api_name, api_keywords = separate_api_parameter(assignment_value)
+
+            dict_content = {}
+            dict_content["name"] = api_name
+            dict_content["key"] = api_keywords
+            dict_content["line_no"] = node.lineno
+            self.assignment_dictionary[assignment_target] = []
+            self.assignment_dictionary[assignment_target].append(dict_content)
         #
         # print("Assignment target: " + assignment_target)
         # print("Assignment visit: " + unparse(node))
@@ -49,11 +58,12 @@ class FromImportVisitor(ast.NodeVisitor):
         module_name = node.module
         imported_name = node.names[0].name
         imported_alias = node.names[0].asname
-        full_path = module_name + "." + imported_name
-        if imported_alias is not None:
-            self.from_import_dict[imported_alias] = full_path
-        else:
-            self.from_import_dict[imported_name] = full_path
+        if module_name is not None:
+            full_path = module_name + "." + imported_name
+            if imported_alias is not None:
+                self.from_import_dict[imported_alias] = full_path
+            else:
+                self.from_import_dict[imported_name] = full_path
 
 class ApiFormatterVisitor(ast.NodeVisitor):
     def __init__(self, import_dict, from_import_dict, assign_dict):
@@ -70,6 +80,7 @@ class ApiFormatterVisitor(ast.NodeVisitor):
 
         hasChange = True
         while hasChange:
+            original_form = outermost_name
             # first check assignment
             if outermost_name in self.ass_dict:
                 print()
@@ -107,6 +118,8 @@ class ApiFormatterVisitor(ast.NodeVisitor):
                 outermost_name = name_split[0]
             else:
                 hasChange = False
+            if outermost_name == original_form:
+                hasChange = False
 
         api_object = {}
         api_new_name = name_split[0]
@@ -141,6 +154,8 @@ def separate_api_parameter(node):
             separated_signature += ", "
     return api_name, api_keywords
 
+
+##
 # Tree is the AST of the complete file
 def process_api_format(tree):
     assignmentVisitor = AssignmentVisitor()
@@ -160,4 +175,4 @@ def process_api_format(tree):
     api_formatter_visitor.visit(tree)
 
     list_api = api_formatter_visitor.return_list
-    print(list_api.__str__())
+    return list_api, import_dict, from_import_dict
