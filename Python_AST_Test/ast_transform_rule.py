@@ -2,36 +2,44 @@ import ast
 import _ast
 from ast import *
 from Python_AST_Test.ast_utils import *
+from astunparse import unparse
+
 
 # Class to remove parameter from an API invocation
 class KeywordParamRemover(ast.NodeTransformer):
     functionName = ""
     parameterName = ""
 
-    def __init__(self, fname, pname):
+    def __init__(self, fname, pname, listlinenumber):
         self.functionName = fname
         self.parameterName = pname
+        self.list_line_number = listlinenumber
         super().__init__()
 
     def remove_param(self, node: Call):
-        nodeFuncName = getFunctionName(node)
-        if nodeFuncName == self.functionName:
-            # Function name is correct
-            listKeywordParam = getKeywordArguments(node)
-            for keyword in listKeywordParam:
-                # print(keyword.arg)
-                if keyword.arg == self.parameterName:
-                    listKeywordParam.remove(keyword)
+        # Function name is correct
+        # This first one is easy check to make sure that there is a relevant keyword here
+        listKeywordParam = getKeywordArguments(node)
+        for keyword in listKeywordParam:
+            # print(keyword.arg)
+            if keyword == self.parameterName:
+                keyword_ast = node.keywords
+                for key_ast in keyword_ast:
+                    if key_ast.arg == self.parameterName:
+                        keyword_ast.remove(key_ast)
+                node.keywords = keyword_ast
 
 
     def visit_Call(self, node: Call):
-        nodeFuncName = getFunctionName(node)
-        self.remove_param(node)
-        listScope = recurseScope(node)
-        print(listScope)
-        for n in listScope:
-            if isinstance(n, _ast.Call):
-                self.remove_param(n)
+        if node.lineno in self.list_line_number:
+            self.remove_param(node)
+            listScope = recurseScope(node)
+            print(listScope)
+            for n in listScope:
+                if isinstance(n, _ast.Call):
+                    self.remove_param(n)
+            print("Before exitting")
+            print(unparse(node))
         return node
 
     def transform(self, tree):
