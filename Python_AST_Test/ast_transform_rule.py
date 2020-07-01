@@ -9,6 +9,7 @@ from astunparse import unparse
 class KeywordParamRemover(ast.NodeTransformer):
     functionName = ""
     parameterName = ""
+    listChanges = []
 
     def __init__(self, fname, pname, listlinenumber):
         self.functionName = fname
@@ -32,22 +33,23 @@ class KeywordParamRemover(ast.NodeTransformer):
 
     def visit_Call(self, node: Call):
         if node.lineno in self.list_line_number:
+            self.listChanges.append("Deprecated API detected in line: " + node.lineno.__str__())
+            self.listChanges.append("Content: \n" + unparse(node))
+            tempString = ""
             self.remove_param(node)
             listScope = recurseScope(node)
-            print(listScope)
             for n in listScope:
                 if isinstance(n, _ast.Call):
                     self.remove_param(n)
-            print("Before exitting")
-            print(unparse(node))
+            self.listChanges.append("Updated content: \n" + unparse(node))
         return node
 
     def transform(self, tree):
-        print_code(tree)
 
         self.visit(tree)
-
+        print("Updated code: ")
         print_code(tree)
+        print("----------------------------------------------------------------------------------------------------")
 
 
 # Class to process the change of API parameter default value
@@ -88,14 +90,13 @@ class DefaultParamValueTransformer(ast.NodeTransformer):
         nodeFuncName = getFunctionName(node)
         self.default_value_transform(node)
         listScope = recurseScope(node)
-        print(listScope)
         for n in listScope:
             if isinstance(n, _ast.Call):
                 self.default_value_transform(n)
         return node
 
     def transform(self, tree):
-        print_code(tree)
+        # print_code(tree)
         self.visit(tree)
         # print(ast.dump(tree))
         print_code(tree)
@@ -120,7 +121,6 @@ class ApiNameTransformer(ast.NodeTransformer):
         nodeFuncName = getFunctionName(node)
         self.name_transformer(node)
         listScope = recurseScope(node)
-        print(listScope)
         for n in listScope:
             if isinstance(n, _ast.Call):
                 self.name_transformer(n)
