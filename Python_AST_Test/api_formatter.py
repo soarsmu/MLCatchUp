@@ -77,9 +77,12 @@ class ApiFormatterVisitor(ast.NodeVisitor):
         # print(api_name)
         name_split = api_name.split(".")
         outermost_name = name_split[0]
-
         hasChange = True
+        loop_flag = 0
         while hasChange:
+            loop_flag += 1
+            if loop_flag > 20:
+                hasChange = False
             original_form = outermost_name
             # first check assignment
             if outermost_name in self.ass_dict:
@@ -139,11 +142,14 @@ class ApiFormatterVisitor(ast.NodeVisitor):
 def separate_api_parameter(node):
     # Loop through the given node from assignment to get all the API Call and keyword
     api_name = getName(node)
+    if api_name is None:
+        # Special processing if none
+        return unparse(node), []
     api_keywords = []
     api_keywords.extend(getKeywordArguments(node))
     scope_list = recurseScope(node)
     for scope in scope_list:
-        if scope is not None:
+        if scope is not None and getName(scope) is not None:
             api_keywords.extend(getKeywordArguments(scope))
             api_name = getName(scope) + "." + api_name
     separated_signature = api_name + "#"

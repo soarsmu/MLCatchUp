@@ -36,7 +36,11 @@ def getName(node):
                     try:
                         return node.value.id
                     except:
-                        return node.value.attr
+                        try:
+                            return node.value.attr
+                        except:
+                            # End of support
+                            return None
 
 
 # helper function to get the API invocation or function name from the node
