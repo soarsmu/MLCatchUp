@@ -14,5 +14,5 @@ concat_version = sklearn_version + np_version
 print(concat_version)
 
 print(someFunc(1,2,someFunc(2,3,4)))
-kmeans = KMeans(n_clusters=2, random_state=0, n_jobs = 4, precompute_distances=True)
+hehe = KMeans(n_clusters=2, random_state=0, n_jobs = 4, precompute_distances=True)
 KMeans(n_clusters=3) if 3 > 2 else KMeans(n_clusters=1)

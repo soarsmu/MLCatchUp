@@ -10,6 +10,7 @@ class KeywordParamRemover(ast.NodeTransformer):
     functionName = ""
     parameterName = ""
     listChanges = []
+    list_line_number = []
 
     def __init__(self, fname, pname, listlinenumber):
         self.functionName = fname
@@ -45,7 +46,7 @@ class KeywordParamRemover(ast.NodeTransformer):
         return node
 
     def transform(self, tree):
-
+        self.listChanges = []
         self.visit(tree)
         print("Updated code: ")
         print_code(tree)

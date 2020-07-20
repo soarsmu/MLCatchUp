@@ -86,7 +86,6 @@ class ApiFormatterVisitor(ast.NodeVisitor):
             original_form = outermost_name
             # first check assignment
             if outermost_name in self.ass_dict:
-                print()
                 node_lineno = node.lineno
                 # get the correct assignment
                 previous_element = self.ass_dict[outermost_name][0]

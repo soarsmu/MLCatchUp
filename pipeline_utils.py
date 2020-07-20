@@ -8,13 +8,15 @@ from git import Repo
 # Input  : a string of git repository
 # Output : the name of the newly created/cloned repository for processing
 def clone_repo(git_repo_url):
-    repo_name = git_repo_url.split("/")[-1]
+    repo_name = "../sklearn_testcases/" + git_repo_url.split("/")[-1]
     repo_name = repo_name[0:repo_name.rfind('.')]
     print("Cloning Repository: " + repo_name)
     try:
         Repo.clone_from(git_repo_url, repo_name)
-    except:
+    except Exception as e:
+        print(e)
         print("Error, repo already exist")
+        return repo_name
     return repo_name
 
 # Input  : a folder path string to be processed recursively
@@ -60,7 +62,11 @@ def process_file(file_path, api_name, deprecation_type, **kwargs):
     list_deprecated_api = []
     list_line_number = []
     list_keywords = kwargs.get("keywords", [])
-    tree = ast.parse(source.read())
+    try:
+        tree = ast.parse(source.read())
+    except Exception as e:
+        print(e)
+        return
     list_api, import_dict, from_import_dict = process_api_format(tree)
     # This is to filter the name of the api to make sure only the deprecated API is processed
     # Need further filter depending on the Deprecation type. May need to check the keyword param
@@ -96,3 +102,35 @@ def process_file(file_path, api_name, deprecation_type, **kwargs):
 # do basic line by line file formatting.
 def apply_changes():
     print("TODO")
+
+
+
+
+
+
+# Input  : a folder path string to be processed recursively
+# Output : return a list of python file within the folder and its subdirectories
+# Output : may also output the list of file
+def list_all_file_nofilter(folder_path):
+    # list of the name that should not be processed
+    list_not_processed = []
+    list_of_file = []
+    walk_dir = folder_path
+
+    for root, subdirs, files in os.walk(walk_dir):
+        # Does not need to list subdirectory
+        # for subdir in subdirs:
+        #     print('\t- subdirectory ' + subdir)
+
+        for filename in files:
+            file_path = os.path.join(root, filename)
+            file_extension = file_path[file_path.rfind(".") + 1:]
+            if file_extension == "py":
+                contain_not_processed = False
+                for term in list_not_processed:
+                    if term in file_path:
+                        contain_not_processed = True
+                        break
+                if not contain_not_processed:
+                    list_of_file.append(file_path)
+    return list_of_file
