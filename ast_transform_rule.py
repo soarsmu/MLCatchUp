@@ -250,8 +250,7 @@ class ApiNameTransformer(ast.NodeTransformer):
             self.visit(tree)
             print_code(tree)
 
-            else:
-                print("Why is both same parent and same method name")
+
 
 
 
