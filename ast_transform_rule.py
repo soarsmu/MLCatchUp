@@ -216,41 +216,51 @@ class ApiNameTransformer(ast.NodeTransformer):
         # Case parent same and method not same = only change the end name of the function
         # Case parent diff = better be safe and create new import and change the whole API invocation
         # This will cause a bug if the parent contains other API invocations (which is unlikely if the parent is changed)
-        if isParentSame and not isMethodNameSame:
-            self.change_whole = False
-            # Only change the name of the function
-            # Need to consider if the name used is an alias, will need to check the import
-            print("Changing function name")
-        elif not isParentSame:
-            self.change_whole = True
-            # Change the whole function
-            # Will need to change the import!
-            print("change whole function")
 
-            # new parent name
-            parent_name = ".".join(split_new[0:-1])
-            new_api_name = split_new[-1]
+        # Check whether there is any deprecated API first
+        if len(self.list_line_number) > 0:
+            if isParentSame and not isMethodNameSame:
+                self.change_whole = False
+                # Only change the name of the function
+                # Need to consider if the name used is an alias, will need to check the import
+                print("Changing function name")
+                old_method_name = split_old[-1]
+                new_method_name = split_new[-1]
+                # TODO: PROCESS THE IMPORT FIRST
+                # TODO: THEN USE THE CALL VISITOR IF NEEDED
 
+            elif not isParentSame:
+                self.change_whole = True
+                # Change the whole function
+                # Will need to change the import!
+                print("change whole function")
 
-            for node in ast.walk(tree):
-                if type(node) == ast.ImportFrom:
-                    print(node)
-                    print(ast.dump(node))
-
-            # Create the new import statement first
-            import_node = ast.ImportFrom(module=parent_name, names=[alias(name=new_api_name, asname=None)], level=0)
-
-            print(ast.dump(tree))
-            # add the new import just before the first API invocation for now
-            # TODO: Think of better placement of the new import
-            tree.body.insert(self.list_line_number[0], import_node)
+                # new parent name
+                parent_name = ".".join(split_new[0:-1])
+                new_api_name = split_new[-1]
 
 
-            # TODO: Change the API invocation into the new imported name (i.e. new_api_name)
-            self.visit(tree)
-            print_code(tree)
-        else:
-            print("Why is both same parent and same method name")
+                for node in ast.walk(tree):
+                    if type(node) == ast.ImportFrom:
+                        print(node)
+                        print(ast.dump(node))
+
+                # Create the new import statement first
+                import_node = ast.ImportFrom(module=parent_name, names=[alias(name=new_api_name, asname=None)], level=0)
+
+                print(ast.dump(tree))
+                # add the new import just before the first API invocation for now
+                # TODO: Think of better placement of the new import
+                print("THIS IS LIST LINE NUMBER")
+                print(self.list_line_number.__str__())
+                tree.body.insert(self.list_line_number[0], import_node)
+
+
+                # TODO: Change the API invocation into the new imported name (i.e. new_api_name)
+                self.visit(tree)
+                print_code(tree)
+            else:
+                print("Why is both same parent and same method name")
 
 
 
