@@ -59,11 +59,11 @@ class KeywordParamChanger(ast.NodeTransformer):
     listChanges = []
     list_line_number = []
 
-    def __init__(self, fname, pname, listlinenumber, new_param_name):
+    def __init__(self, fname, pname, new_param_name, listlinenumber):
         self.functionName = fname
         self.parameterName = pname
-        self.list_line_number = listlinenumber
         self.new_param_name = new_param_name
+        self.list_line_number = listlinenumber
         super().__init__()
 
     def change_param(self, node: Call):
@@ -99,7 +99,7 @@ class KeywordParamChanger(ast.NodeTransformer):
         self.listChanges = []
         self.visit(tree)
         # print("Updated code: ")
-        # print_code(tree)
+        print_code(tree)
         # print("----------------------------------------------------------------------------------------------------")
 
 
