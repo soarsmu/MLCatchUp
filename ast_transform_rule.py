@@ -391,3 +391,74 @@ class ApiNameTransformer(ast.NodeTransformer):
 
         # self.visit(tree)
         # print_code(tree)
+
+class PositionalToKeyword(ast.NodeTransformer):
+    functionName = ""
+    parameterName = ""
+    listChanges = []
+    list_line_number = []
+
+    def __init__(self, api_name, param_position, new_keyword, list_line_number):
+        self.functionName = api_name
+        self.parameter_position = param_position
+        self.parameter_keyword = new_keyword
+        self.list_line_number = list_line_number
+        super().__init__()
+
+    def positional_to_keyword(self, node: Call):
+        # Function name is correct
+
+        # PERHAPS FOR THIS WE NEED TO MAKE SURE THAT THE POSITIONAL ARGUMENT IS OF THE CORRECT TYPE
+        # E.G. MAKE SURE THAT THE SECOND POSITIONAL ARGUMENT IS INTEGER TYPE
+        # OR MAYBE WE ALSO NEED TO MAKE SURE THE NUMBER OF ARGUMENT IS CORRECT (E.G. 3 POSITIONAL PARAMETER)
+        # THIS WILL BE A FUTURE TODO
+        # CHECKING THE TYPE OF THE POSITIONAL ARGUMENT WILL BE HARDER SINCE IT CAN BE A NAME, API CALL, CONSTANT, ETC
+
+        listPositionalParam = node.args
+        # print(listPositionalParam.__str__())
+        print("TODO TODO TODO")
+        print(ast.dump(node))
+        if len(listPositionalParam) >= self.parameter_position:
+            # since the parameter position start from 1 while the index start from 0
+            value_args = listPositionalParam.pop(self.parameter_position - 1)
+            listKeyword = node.keywords
+            # Create the new keyword
+            new_keyword = ast.keyword(arg=self.parameter_keyword, value=value_args)
+            listKeyword.append(new_keyword)
+            node.args = listPositionalParam
+            node.keywords = listKeyword
+
+        # listKeywordParam = getKeywordArguments(node)
+        #
+        # for keyword in listKeywordParam:
+        #     # print(keyword.arg)
+        #     if keyword == self.parameterName:
+        #         keyword_ast = node.keywords
+        #         for key_ast in keyword_ast:
+        #             if key_ast.arg == self.parameterName:
+        #                 new_keyword = key_ast
+        #                 new_keyword.arg = self.new_param_name
+        #                 keyword_ast.remove(key_ast)
+        #                 keyword_ast.append(new_keyword)
+        #         node.keywords = keyword_ast
+
+
+
+    def visit_Call(self, node: Call):
+        if node.lineno in self.list_line_number:
+            self.listChanges.append("Deprecated API detected in line: " + node.lineno.__str__())
+            self.listChanges.append("Content: \n" + unparse(node))
+            self.positional_to_keyword(node)
+            listScope = recurseScope(node)
+            for n in listScope:
+                if isinstance(n, _ast.Call):
+                    self.positional_to_keyword(n)
+            self.listChanges.append("Updated content: \n" + unparse(node))
+        return node
+
+    def transform(self, tree):
+        self.listChanges = []
+        self.visit(tree)
+        # print("Updated code: ")
+        print_code(tree)
+        # print("----------------------------------------------------------------------------------------------------")
