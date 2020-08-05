@@ -5,7 +5,6 @@ from ast_utils import *
 from astunparse import unparse
 import re
 
-
 # Class to remove parameter from an API invocation
 class KeywordParamRemover(ast.NodeTransformer):
     functionName = ""
@@ -102,56 +101,6 @@ class KeywordParamChanger(ast.NodeTransformer):
         # print("Updated code: ")
         print_code(tree)
         # print("----------------------------------------------------------------------------------------------------")
-
-
-# Class to process the change of API parameter default value
-#
-# dummy_clf = DummyClassifier() (Default value is strategy="stratified"))
-#  ->
-# dummy_clf = DummyClassifier(strategy="stratified")
-class DefaultParamValueTransformer(ast.NodeTransformer):
-    functionName = ""
-    parameterName = ""
-    oldDefaultValue = ""
-
-    def __init__(self, fname, pname, oldvalue):
-        self.functionName = fname
-        self.parameterName = pname
-        self.oldDefaultValue = oldvalue
-        super().__init__()
-
-    def default_value_transform(self, node: Call):
-        nodeFuncName = getFunctionName(node)
-        if nodeFuncName == self.functionName:
-            # Function name is correct
-            listKeywordParam = getKeywordArguments(node)
-            isKeywordExist = False
-            for keyword in listKeywordParam:
-                # print(ast.dump(keyword))
-                # print(keyword.arg)
-                if keyword.arg == self.parameterName:
-                    isKeywordExist = True
-            if not isKeywordExist:
-                # If keyword is not exist yet, it means that the old API use the default value which is changed
-                # in the new API. Therefore, we need to create a new node
-                # print("Keyword not exist")
-                newParam = createKeywordParam(self.parameterName, self.oldDefaultValue)
-                listKeywordParam.append(newParam)
-
-    def visit_Call(self, node: Call):
-        nodeFuncName = getFunctionName(node)
-        self.default_value_transform(node)
-        listScope = recurseScope(node)
-        for n in listScope:
-            if isinstance(n, _ast.Call):
-                self.default_value_transform(n)
-        return node
-
-    def transform(self, tree):
-        # print_code(tree)
-        self.visit(tree)
-        # print(ast.dump(tree))
-        print_code(tree)
 
 class ApiNameTransformer(ast.NodeTransformer):
     functionName = ""
@@ -464,11 +413,10 @@ class PositionalToKeyword(ast.NodeTransformer):
         print_code(tree)
         # print("----------------------------------------------------------------------------------------------------")
 
-# Convert positional parameter to keyword parameter
+# Remove positional parameter
 # TODO - NOT DONE YET
 class PositionalParamRemover(ast.NodeTransformer):
     functionName = ""
-    parameterName = ""
     listChanges = []
     list_line_number = []
 
@@ -479,9 +427,8 @@ class PositionalParamRemover(ast.NodeTransformer):
         self.list_line_number = list_line_number
         super().__init__()
 
-    def positional_to_keyword(self, node: Call):
+    def remove_positional_param(self, node: Call):
         # Function name is correct
-
         # PERHAPS FOR THIS WE NEED TO MAKE SURE THAT THE POSITIONAL ARGUMENT IS OF THE CORRECT TYPE
         # E.G. MAKE SURE THAT THE SECOND POSITIONAL ARGUMENT IS INTEGER TYPE
         # OR MAYBE WE ALSO NEED TO MAKE SURE THE NUMBER OF ARGUMENT IS CORRECT (E.G. 3 POSITIONAL PARAMETER)
@@ -494,39 +441,18 @@ class PositionalParamRemover(ast.NodeTransformer):
         print(ast.dump(node))
         if len(listPositionalParam) >= self.parameter_position:
             # since the parameter position start from 1 while the index start from 0
-            value_args = listPositionalParam.pop(self.parameter_position - 1)
-            listKeyword = node.keywords
-            # Create the new keyword
-            new_keyword = ast.keyword(arg=self.parameter_keyword, value=value_args)
-            listKeyword.append(new_keyword)
+            listPositionalParam.pop(self.parameter_position - 1)
             node.args = listPositionalParam
-            node.keywords = listKeyword
-
-        # listKeywordParam = getKeywordArguments(node)
-        #
-        # for keyword in listKeywordParam:
-        #     # print(keyword.arg)
-        #     if keyword == self.parameterName:
-        #         keyword_ast = node.keywords
-        #         for key_ast in keyword_ast:
-        #             if key_ast.arg == self.parameterName:
-        #                 new_keyword = key_ast
-        #                 new_keyword.arg = self.new_param_name
-        #                 keyword_ast.remove(key_ast)
-        #                 keyword_ast.append(new_keyword)
-        #         node.keywords = keyword_ast
-
-
 
     def visit_Call(self, node: Call):
         if node.lineno in self.list_line_number:
             self.listChanges.append("Deprecated API detected in line: " + node.lineno.__str__())
             self.listChanges.append("Content: \n" + unparse(node))
-            self.positional_to_keyword(node)
+            self.remove_positional_param(node)
             listScope = recurseScope(node)
             for n in listScope:
                 if isinstance(n, _ast.Call):
-                    self.positional_to_keyword(n)
+                    self.remove_positional_param(n)
             self.listChanges.append("Updated content: \n" + unparse(node))
         return node
 
@@ -619,3 +545,57 @@ class AddNewParameter(ast.NodeTransformer):
         # print("Updated code: ")
         print_code(tree)
         # print("----------------------------------------------------------------------------------------------------")
+
+
+
+
+
+
+# Class to process the change of API parameter default value
+#
+# dummy_clf = DummyClassifier() (Default value is strategy="stratified"))
+#  ->
+# dummy_clf = DummyClassifier(strategy="stratified")
+class DefaultParamValueTransformer(ast.NodeTransformer):
+    functionName = ""
+    parameterName = ""
+    oldDefaultValue = ""
+
+    def __init__(self, fname, pname, oldvalue):
+        self.functionName = fname
+        self.parameterName = pname
+        self.oldDefaultValue = oldvalue
+        super().__init__()
+
+    def default_value_transform(self, node: Call):
+        nodeFuncName = getFunctionName(node)
+        if nodeFuncName == self.functionName:
+            # Function name is correct
+            listKeywordParam = getKeywordArguments(node)
+            isKeywordExist = False
+            for keyword in listKeywordParam:
+                # print(ast.dump(keyword))
+                # print(keyword.arg)
+                if keyword.arg == self.parameterName:
+                    isKeywordExist = True
+            if not isKeywordExist:
+                # If keyword is not exist yet, it means that the old API use the default value which is changed
+                # in the new API. Therefore, we need to create a new node
+                # print("Keyword not exist")
+                newParam = createKeywordParam(self.parameterName, self.oldDefaultValue)
+                listKeywordParam.append(newParam)
+
+    def visit_Call(self, node: Call):
+        nodeFuncName = getFunctionName(node)
+        self.default_value_transform(node)
+        listScope = recurseScope(node)
+        for n in listScope:
+            if isinstance(n, _ast.Call):
+                self.default_value_transform(n)
+        return node
+
+    def transform(self, tree):
+        # print_code(tree)
+        self.visit(tree)
+        # print(ast.dump(tree))
+        print_code(tree)
