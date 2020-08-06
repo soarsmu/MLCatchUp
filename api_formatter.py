@@ -1,7 +1,7 @@
 import ast
 from astunparse import unparse
 from ast import Assign
-from Python_AST_Test.ast_utils import *
+from ast_utils import *
 
 class AssignmentVisitor(ast.NodeVisitor):
     def __init__(self):
@@ -66,15 +66,18 @@ class FromImportVisitor(ast.NodeVisitor):
                 self.from_import_dict[imported_name] = full_path
 
 class ApiFormatterVisitor(ast.NodeVisitor):
-    def __init__(self, import_dict, from_import_dict, assign_dict):
+    def __init__(self, import_dict, from_import_dict, assign_dict, api_name):
         self.imp_dict = import_dict
         self.from_dict = from_import_dict
         self.ass_dict = assign_dict
         self.return_list = []
+        self.api_name = api_name
+        self.api_only_name = api_name.split(".")[-1]
 
     def visit_Call(self, node: Call):
+        has_assignment_change = False
+        has_multitude_change = False
         api_name, keywords = separate_api_parameter(node)
-        # print(api_name)
         name_split = api_name.split(".")
         outermost_name = name_split[0]
         hasChange = True
@@ -83,8 +86,8 @@ class ApiFormatterVisitor(ast.NodeVisitor):
             loop_flag += 1
             if loop_flag > 20:
                 hasChange = False
-            original_form = outermost_name
             # first check assignment
+            original_form = outermost_name
             if outermost_name in self.ass_dict:
                 node_lineno = node.lineno
                 # get the correct assignment
@@ -102,6 +105,9 @@ class ApiFormatterVisitor(ast.NodeVisitor):
                 for item in reversed(splitted):
                     name_split.insert(0, item)
                 outermost_name = name_split[0]
+                if has_assignment_change:
+                    has_multitude_change = True
+                has_assignment_change = True
             elif outermost_name in self.from_dict:
                 previous_element = self.from_dict[outermost_name]
                 splitted = previous_element.split(".")
@@ -110,6 +116,8 @@ class ApiFormatterVisitor(ast.NodeVisitor):
                 for item in reversed(splitted):
                     name_split.insert(0, item)
                 outermost_name = name_split[0]
+                if has_assignment_change:
+                    has_multitude_change = True
             elif outermost_name in self.imp_dict:
                 previous_element = self.imp_dict[outermost_name]
                 splitted = previous_element.split(".")
@@ -118,20 +126,43 @@ class ApiFormatterVisitor(ast.NodeVisitor):
                 for item in reversed(splitted):
                     name_split.insert(0, item)
                 outermost_name = name_split[0]
+                if has_assignment_change:
+                    has_multitude_change = True
             else:
                 hasChange = False
+            # To make sure that there are no infinite loop
             if outermost_name == original_form:
                 hasChange = False
+
+
+
 
         api_object = {}
         api_new_name = name_split[0]
         name_split.pop(0)
         for part in name_split:
             api_new_name = api_new_name + "." + part
-        api_object["name"] = api_new_name
-        api_object["key"] = keywords
-        api_object["line_no"] = node.lineno
-        self.return_list.append(api_object)
+
+
+
+        # THIS IS FOR SUPER ACCURATE MEASUREMENT
+        if has_assignment_change and self.api_only_name not in api_new_name.split(".")[-1]:
+            if self.api_only_name in api_new_name:
+                print("EORORORORROEOREORORE")
+        else:
+            api_object["name"] = api_new_name
+            api_object["key"] = keywords
+            api_object["line_no"] = node.lineno
+            api_object["code"] = unparse(node)
+            self.return_list.append(api_object)
+
+
+        # INACCURATE VERSION
+        # api_object["name"] = api_new_name
+        # api_object["key"] = keywords
+        # api_object["line_no"] = node.lineno
+        # api_object["code"] = unparse(node)
+        # self.return_list.append(api_object)
         # getOuterMostApi(node)
         # TODO: Think about how should we convert / replace the name
         # TODO: String replacement should be easier, but can we do that? refer to DLocator
@@ -162,7 +193,7 @@ def separate_api_parameter(node):
 
 ##
 # Tree is the AST of the complete file
-def process_api_format(tree):
+def process_api_format(tree, api_name):
     assignmentVisitor = AssignmentVisitor()
     assignmentVisitor.visit(tree)
 
@@ -176,7 +207,7 @@ def process_api_format(tree):
     import_dict = importVisitor.import_dictionary
     from_import_dict = fromImportVisitor.from_import_dict
 
-    api_formatter_visitor = ApiFormatterVisitor(import_dict, from_import_dict, assign_dict)
+    api_formatter_visitor = ApiFormatterVisitor(import_dict, from_import_dict, assign_dict, api_name)
     api_formatter_visitor.visit(tree)
 
     list_api = api_formatter_visitor.return_list
