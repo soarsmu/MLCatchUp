@@ -1,7 +1,7 @@
 import os
 import ast
-from Python_AST_Test.api_formatter import *
-from Python_AST_Test.ast_transform_rule import *
+from api_formatter import *
+from ast_transform_rule import *
 from git import Repo
 
 
