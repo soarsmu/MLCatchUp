@@ -9,6 +9,7 @@ class ApiParameter:
     param_type = ""
     param_default_value = ""
     param_name = ""
+    position = -1
 
     def __str__(self):
         return self.param_name + ":" + self.param_type + "=" + self.param_default_value
@@ -16,9 +17,10 @@ class ApiParameter:
     def __repr__(self):
         return self.__str__()
 
-    def __init__(self, parameter_string):
+    def __init__(self, parameter_string, position=-1):
         self.param_string = parameter_string
         self.parse_param_string(self.param_string)
+        self.position = position
 
     def parse_param_string(self, parameter_string):
         try:
@@ -89,6 +91,7 @@ def parse_api_signature(api_string):
     stripped_pos_param = []
     stripped_key_param = []
     # Remove all whitespace from list
+
     for param in pos_param:
         if not(param.isspace() or not param):
             stripped_pos_param.append(param.strip())
@@ -102,8 +105,11 @@ def parse_api_signature(api_string):
 
     # Convert all the API parameter into api_parameter class
     return_pos_param = []
+    # Add the position
+    i = 1
     for param in stripped_pos_param:
-        return_pos_param.append(ApiParameter(param))
+        return_pos_param.append(ApiParameter(param, i))
+        i += 1
 
     return_key_param = []
     for param in stripped_key_param:
@@ -185,6 +191,37 @@ def eliminate_same_param(old_api: ApiSignature, new_api: ApiSignature):
     new_api.keyword_param = new_key_param
 
 
+# Get the api mapping between the leftover old api parameter and the new api parameter
+# The targeted functionality is that the mapping will be inferred automatically
+# return a dictionary mapping between the old api parameter with the new api parameter
+def get_api_mapping(old_api: ApiSignature, new_api: ApiSignature):
+    return_dict = {}
+    old_pos_param = old_api.positional_param
+    old_key_param = old_api.keyword_param
+    new_pos_param = new_api.positional_param
+    new_key_param = new_api.keyword_param
+
+    # TODO: make an advanced API mapper which may incorporate NLP / semantic understanding
+    # Map based on type first
+
+    # Map the positional param first
+    i = 0
+    while i < len(old_pos_param):
+        i_param = old_pos_param[i]
+        same_param = False
+        for j in range(0, len(new_pos_param)):
+            j_param = new_pos_param[j]
+            if is_same_param(i_param, j_param):
+                # Same param detected
+                # Remove both
+                old_pos_param.pop(i)
+                new_pos_param.pop(j)
+                same_param = True
+                break
+        if not same_param:
+            i += 1
+
+
 # Helper function to list all the differences between old api and new api
 # Return it in the form of list of DSL string that defines all the transformations
 def list_all_differences(old_api: ApiSignature, new_api: ApiSignature):
@@ -197,6 +234,19 @@ def list_all_differences(old_api: ApiSignature, new_api: ApiSignature):
         list_differences.append("RENAME_API " + old_name + " TO " + new_name)
 
     # Then check the parameter
+    # Remove same parameter first
+    print("Signature")
+    print(old_signature)
+    print(new_signature)
+
+    eliminate_same_param(old_signature, new_signature)
+
+    print("Signature After elimination")
+    print(old_signature)
+    print(new_signature)
+
+    # 1. Approximate name change for the parameter
+
 
     return []
 
@@ -210,8 +260,3 @@ old_signature = parse_api_signature("torch.btrifact(A: Tensor, pivot=True, out=N
 # torch.lu(A, pivot=True, get_infos=False, out=None)
 new_signature = parse_api_signature("torch.lu(A, pivot=True, get_infos=False, out=None)")
 
-print("Signature")
-print(old_signature)
-print(new_signature)
-
-eliminate_same_param(old_signature, new_signature)
