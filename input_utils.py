@@ -194,6 +194,7 @@ def eliminate_same_param(old_api: ApiSignature, new_api: ApiSignature):
 # Get the api mapping between the leftover old api parameter and the new api parameter
 # The targeted functionality is that the mapping will be inferred automatically
 # return a dictionary mapping between the old api parameter with the new api parameter
+# USABLE FOR CHANGE PARAMETER NAME DEPRECATION
 def get_api_mapping(old_api: ApiSignature, new_api: ApiSignature):
     return_dict = {}
     old_pos_param = old_api.positional_param
@@ -211,16 +212,47 @@ def get_api_mapping(old_api: ApiSignature, new_api: ApiSignature):
         same_param = False
         for j in range(0, len(new_pos_param)):
             j_param = new_pos_param[j]
-            if is_same_param(i_param, j_param):
+            if i_param.param_type == j_param.param_type:
                 # Same param detected
                 # Remove both
                 old_pos_param.pop(i)
                 new_pos_param.pop(j)
                 same_param = True
+                return_dict[i_param] = j_param
                 break
         if not same_param:
             i += 1
+    print("Api Mapping Dictionary")
+    print(return_dict)
+    return return_dict
 
+
+# Get the API mapping between the leftover old api positional parameter with the new api keyword parameter
+# It is used to find the type of deprecation in which positional parameter is transformed into keyword parameter
+# USABLE FOR POSITIONAL TO KEYWORD API DEPRECATION
+def get_positional_to_keyword_param(old_api: ApiSignature, new_api: ApiSignature):
+    return_dict = {}
+    old_pos_param = old_api.positional_param
+    new_key_param = new_api.keyword_param
+    i = 0
+    while i < len(old_pos_param):
+        i_param = old_pos_param[i]
+        same_param = False
+        for j in range(0, len(new_key_param)):
+            j_param = new_key_param[j]
+            if i_param.param_type == j_param.param_type or i_param.param_name == j_param.param_name:
+                # Same param detected
+                # Remove both
+                old_pos_param.pop(i)
+                new_key_param.pop(j)
+                same_param = True
+                return_dict[i_param] = j_param
+                break
+        if not same_param:
+            i += 1
+    print("Positional to Keyword dictionary")
+    print(return_dict)
+    return return_dict
 
 # Helper function to list all the differences between old api and new api
 # Return it in the form of list of DSL string that defines all the transformations
@@ -245,7 +277,24 @@ def list_all_differences(old_api: ApiSignature, new_api: ApiSignature):
     print(old_signature)
     print(new_signature)
 
-    # 1. Approximate name change for the parameter
+    # 1. Get positional param to keyword param transformation
+    get_positional_to_keyword_param(old_signature, new_signature)
+    # 2. Approximate name change for the parameter
+    get_api_mapping(old_signature, new_signature)
+    # 3. Process leftover positional parameter and keyword parameter from old API
+    #    The leftovers should be deleted
+    list_deleted_pos_param = old_signature.positional_param
+    print("Deleted pos param")
+    print(list_deleted_pos_param)
+    # 4. Also process the leftover keyword parameter
+    list_deleted_key_param = old_signature.keyword_param
+    print("Deleted key param")
+    print(list_deleted_key_param)
+    # 5. Then, process the leftovers parameter from the new API
+    #    The leftovers from the new API should be added (e.g. a new default parameter)
+    list_new_param = new_signature.positional_param + new_signature.keyword_param
+    print("Added param")
+    print(list_new_param)
 
 
     return []
@@ -260,3 +309,6 @@ old_signature = parse_api_signature("torch.btrifact(A: Tensor, pivot=True, out=N
 # torch.lu(A, pivot=True, get_infos=False, out=None)
 new_signature = parse_api_signature("torch.lu(A, pivot=True, get_infos=False, out=None)")
 
+# Test the difference check/mapping with rename parameter test case
+
+list_all_differences(old_signature, new_signature)
