@@ -3,7 +3,32 @@ import _ast
 from ast import *
 from ast_utils import *
 from astunparse import unparse
+from api_formatter import *
+from input_utils import ApiSignature
 import re
+
+# Helper function to get the list of line number
+def get_list_API(tree, api_signature: ApiSignature):
+    api_name = api_signature.api_name
+    list_api, import_dict, from_import_dict = process_api_format(tree, api_name)
+    list_deprecated_api = []
+    list_completed_api = []
+    for api in list_api:
+        if api_name.strip() == api["name"].strip():
+            key_is_correct = True
+            list_deprecated_api.append(api)
+
+    for api in list_deprecated_api:
+        print("This is API")
+        print(api)
+        list_completed_api.append(api)
+    return list_completed_api
+
+def get_list_line_number(list_completed_api):
+    list_line_number = []
+    for api in list_completed_api:
+        list_line_number.append(api["line_no"])
+    return list_line_number
 
 # Class to remove parameter from an API invocation
 class KeywordParamRemover(ast.NodeTransformer):
@@ -138,16 +163,12 @@ class ApiNameTransformer(ast.NodeTransformer):
             excessAPI = actual_api['name'].replace(self.oldApiName, '')
 
             api_without_arguments = api_without_arguments.replace(excessAPI, '')
-            print("THIS IS API WITHOUT ARGUMENTS: " + api_without_arguments)
 
             if not self.change_whole and len(api_without_arguments.split(".")) > 1:
                 # Should also process excess API here?
-                print("SPECIAL CHANGEEEE")
                 # Change the whole API invocation
-                print(ast.dump(node))
                 # Find if there are excess API invocation / object
 
-                print("ExcessAPI: " + excessAPI)
                 # Case have excess API (e.g. KMeans that is followed by .fit)
 
                 currentApi = unparse(node)
@@ -158,17 +179,6 @@ class ApiNameTransformer(ast.NodeTransformer):
                     changed_part = currentApi[0:idx - 1]
                 else:
                     changed_part = currentApi
-
-
-
-
-
-
-
-
-
-                print("THE DIFFERENCE IS HERE")
-                print("CHANGED PART:")
                 print(changed_part)
                 changed_part_without_arg = changed_part
                 nb_rep = 1
