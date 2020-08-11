@@ -295,9 +295,16 @@ def list_all_differences(old_api: ApiSignature, new_api: ApiSignature):
     list_new_param = new_signature.positional_param + new_signature.keyword_param
     print("Added param")
     print(list_new_param)
+    for param in list_new_param:
+        # If has default value
+        if param.param_default_value:
+            dsl = "ADD_PARAM " + param.param_name + " WITH_VALUE " + param.param_default_value
+            list_differences.append(dsl)
+    print("DSL LIST: ")
+    print(list_differences)
 
 
-    return []
+    return list_differences
 
 # parse the API signature
 # torch.div test
@@ -311,4 +318,4 @@ new_signature = parse_api_signature("torch.lu(A, pivot=True, get_infos=False, ou
 
 # Test the difference check/mapping with rename parameter test case
 
-list_all_differences(old_signature, new_signature)
+dsl_list = list_all_differences(old_signature, new_signature)
