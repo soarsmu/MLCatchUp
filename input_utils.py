@@ -2,6 +2,7 @@
 # Will need to parse the if then else input for the added constraint
 import sys
 import os
+from DSL import *
 
 # Class to parse the api parameter string and parse it accordingly
 # e.g. api_parameter("param1:torch.IntTensor=torch.tensor(0)")
@@ -268,31 +269,31 @@ def list_all_differences(old_api: ApiSignature, new_api: ApiSignature):
     # Then check the parameter
     # Remove same parameter first
     print("Signature")
-    print(old_signature)
-    print(new_signature)
+    print(old_api)
+    print(new_api)
 
-    eliminate_same_param(old_signature, new_signature)
+    eliminate_same_param(old_api, new_api)
 
     print("Signature After elimination")
-    print(old_signature)
-    print(new_signature)
+    print(old_api)
+    print(new_api)
 
     # 1. Get positional param to keyword param transformation
-    get_positional_to_keyword_param(old_signature, new_signature)
+    get_positional_to_keyword_param(old_api, new_api)
     # 2. Approximate name change for the parameter
-    get_api_mapping(old_signature, new_signature)
+    get_api_mapping(old_api, new_api)
     # 3. Process leftover positional parameter and keyword parameter from old API
     #    The leftovers should be deleted
-    list_deleted_pos_param = old_signature.positional_param
+    list_deleted_pos_param = old_api.positional_param
     print("Deleted pos param")
     print(list_deleted_pos_param)
     # 4. Also process the leftover keyword parameter
-    list_deleted_key_param = old_signature.keyword_param
+    list_deleted_key_param = old_api.keyword_param
     print("Deleted key param")
     print(list_deleted_key_param)
     # 5. Then, process the leftovers parameter from the new API
     #    The leftovers from the new API should be added (e.g. a new default parameter)
-    list_new_param = new_signature.positional_param + new_signature.keyword_param
+    list_new_param = new_api.positional_param + new_api.keyword_param
     print("Added param")
     print(list_new_param)
     for param in list_new_param:
@@ -305,17 +306,3 @@ def list_all_differences(old_api: ApiSignature, new_api: ApiSignature):
 
 
     return list_differences
-
-# parse the API signature
-# torch.div test
-torch_div_signature = parse_api_signature("torch.div(param1:torch.IntTensor, param2:torch.IntTensor, *, out:torch.Tensor=None)")
-
-# torch.btrifact(A: Tensor, pivot=True, out=None)
-old_signature = parse_api_signature("torch.btrifact(A: Tensor, pivot=True, out=None)")
-
-# torch.lu(A, pivot=True, get_infos=False, out=None)
-new_signature = parse_api_signature("torch.lu(A, pivot=True, get_infos=False, out=None)")
-
-# Test the difference check/mapping with rename parameter test case
-
-dsl_list = list_all_differences(old_signature, new_signature)
