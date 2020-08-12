@@ -51,8 +51,17 @@ def run_DSL(list_DSL, filename, api_signature: ApiSignature):
                 nameTransformer.transform(tree)
                 # Convert the API name into the new name for future detection
                 api_name = new_name
+                api_signature.api_name = api_name
             elif splitted_dsl[0] == "ADD_PARAM":
                 print("ADDING PARAM")
+
+                param_name = splitted_dsl[1]
+                param_value = splitted_dsl[3]
+                # currently default to call until there is new way to detect the type
+                param_type = "call"
+                print("API NAME: " + api_name)
+                addParamTransformer = AddNewParameter(api_name, param_name, param_type, param_value, list_line_number)
+                addParamTransformer.transform(tree)
 
 #
 # # The source file is the 1st argument to the script
