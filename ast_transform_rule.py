@@ -378,9 +378,9 @@ class PositionalToKeyword(ast.NodeTransformer):
         # print(listPositionalParam.__str__())
         print("TODO TODO TODO")
         print(ast.dump(node))
-        if len(listPositionalParam) >= self.parameter_position:
+        if len(listPositionalParam) >= int(self.parameter_position):
             # since the parameter position start from 1 while the index start from 0
-            value_args = listPositionalParam.pop(self.parameter_position - 1)
+            value_args = listPositionalParam.pop(int(self.parameter_position) - 1)
             listKeyword = node.keywords
             # Create the new keyword
             new_keyword = ast.keyword(arg=self.parameter_keyword, value=value_args)
@@ -412,7 +412,15 @@ class PositionalToKeyword(ast.NodeTransformer):
             listScope = recurseScope(node)
             for n in listScope:
                 if isinstance(n, _ast.Call):
-                    self.positional_to_keyword(n)
+                    # Check if the keyword is already present
+                    isExist = False
+                    listKeyword = node.keywords
+                    for key in listKeyword:
+                        if key.arg == self.parameterName:
+                            isExist = True
+                            break
+                    if not isExist:
+                        self.positional_to_keyword(n)
             self.listChanges.append("Updated content: \n" + unparse(node))
         return node
 
@@ -545,7 +553,15 @@ class AddNewParameter(ast.NodeTransformer):
             listScope = recurseScope(node)
             for n in listScope:
                 if isinstance(n, _ast.Call):
-                    self.add_new_parameter(n)
+                    # Check if the keyword is already present
+                    isExist = False
+                    listKeyword = node.keywords
+                    for key in listKeyword:
+                        if key.arg == self.parameterName:
+                            isExist = True
+                            break
+                    if not isExist:
+                        self.add_new_parameter(n)
             self.listChanges.append("Updated content: \n" + unparse(node))
         return node
 
