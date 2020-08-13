@@ -42,6 +42,7 @@ class KeywordParamRemover(ast.NodeTransformer):
         self.functionName = fname
         self.parameterName = pname
         self.list_line_number = listlinenumber
+        self.dict_change = {}
         super().__init__()
 
     def remove_param(self, node: Call):
@@ -97,6 +98,7 @@ class KeywordParamChanger(ast.NodeTransformer):
         self.parameterName = pname
         self.new_param_name = new_param_name
         self.list_line_number = listlinenumber
+        self.dict_change = {}
         super().__init__()
 
     def change_param(self, node: Call):
@@ -134,7 +136,7 @@ class KeywordParamChanger(ast.NodeTransformer):
         self.listChanges = []
         self.visit(tree)
         # print("Updated code: ")
-        print_code(tree)
+        # print_code(tree)
         # print("----------------------------------------------------------------------------------------------------")
         return self.dict_change
 
@@ -149,6 +151,7 @@ class ApiNameTransformer(ast.NodeTransformer):
         self.newApiName = newname
         self.listChanges = []
         self.found_api = list_found_api
+        self.dict_change = {}
         super().__init__()
 
     def visit_Call(self, node: Call):
@@ -347,7 +350,7 @@ class ApiNameTransformer(ast.NodeTransformer):
                 self.dict_change[self.list_line_number[0] - 1] = import_node
 
 
-            print_code(tree)
+            # print_code(tree)
             return self.dict_change
 
 
@@ -367,6 +370,7 @@ class PositionalToKeyword(ast.NodeTransformer):
         self.parameter_position = param_position
         self.parameter_keyword = new_keyword
         self.list_line_number = list_line_number
+        self.dict_change = {}
         super().__init__()
 
     def positional_to_keyword(self, node: Call):
@@ -434,7 +438,7 @@ class PositionalToKeyword(ast.NodeTransformer):
         self.listChanges = []
         self.visit(tree)
         # print("Updated code: ")
-        print_code(tree)
+        # print_code(tree)
         # print("----------------------------------------------------------------------------------------------------")
         return self.dict_change
 
@@ -450,6 +454,7 @@ class PositionalParamRemover(ast.NodeTransformer):
         self.parameter_position = param_position
         self.parameter_keyword = new_keyword
         self.list_line_number = list_line_number
+        self.dict_change = {}
         super().__init__()
 
     def remove_positional_param(self, node: Call):
@@ -485,7 +490,7 @@ class PositionalParamRemover(ast.NodeTransformer):
         self.listChanges = []
         self.visit(tree)
         # print("Updated code: ")
-        print_code(tree)
+        # print_code(tree)
         # print("----------------------------------------------------------------------------------------------------")
 
 
@@ -503,6 +508,7 @@ class AddNewParameter(ast.NodeTransformer):
         self.parameterName = parameter_name
         self.parameterType = parameter_type
         self.parameterValue = parameter_value
+        self.dict_change = {}
 
         self.list_line_number = list_line_number
         super().__init__()
@@ -578,7 +584,7 @@ class AddNewParameter(ast.NodeTransformer):
         self.listChanges = []
         self.visit(tree)
         # print("Updated code: ")
-        print_code(tree)
+        # print_code(tree)
         # print("----------------------------------------------------------------------------------------------------")
         return self.dict_change
 
@@ -601,6 +607,7 @@ class DefaultParamValueTransformer(ast.NodeTransformer):
         self.functionName = fname
         self.parameterName = pname
         self.oldDefaultValue = oldvalue
+        self.dict_change = {}
         super().__init__()
 
     def default_value_transform(self, node: Call):
@@ -634,4 +641,4 @@ class DefaultParamValueTransformer(ast.NodeTransformer):
         # print_code(tree)
         self.visit(tree)
         # print(ast.dump(tree))
-        print_code(tree)
+        # print_code(tree)
