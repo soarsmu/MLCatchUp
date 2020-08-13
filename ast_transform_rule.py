@@ -36,7 +36,7 @@ class KeywordParamRemover(ast.NodeTransformer):
     parameterName = ""
     listChanges = []
     list_line_number = []
-    dict_changes = {}
+    dict_change = {}
 
     def __init__(self, fname, pname, listlinenumber):
         self.functionName = fname
@@ -58,6 +58,7 @@ class KeywordParamRemover(ast.NodeTransformer):
                 node.keywords = keyword_ast
 
 
+
     def visit_Call(self, node: Call):
         if node.lineno in self.list_line_number:
             self.listChanges.append("Deprecated API detected in line: " + node.lineno.__str__())
@@ -72,6 +73,7 @@ class KeywordParamRemover(ast.NodeTransformer):
                 # if isinstance(n, _ast.Call):
                     self.remove_param(n)
             self.listChanges.append("Updated content: \n" + unparse(node))
+            self.dict_change[node.lineno] = node
         return node
 
     def transform(self, tree):
@@ -80,6 +82,7 @@ class KeywordParamRemover(ast.NodeTransformer):
         # print("Updated code: ")
         # print_code(tree)
         # print("----------------------------------------------------------------------------------------------------")
+        return self.dict_change
 
 # Class to change keyword parameter
 class KeywordParamChanger(ast.NodeTransformer):
@@ -112,6 +115,7 @@ class KeywordParamChanger(ast.NodeTransformer):
                         keyword_ast.append(new_keyword)
                 node.keywords = keyword_ast
 
+
     def visit_Call(self, node: Call):
         if node.lineno in self.list_line_number:
             self.listChanges.append("Deprecated API detected in line: " + node.lineno.__str__())
@@ -123,6 +127,7 @@ class KeywordParamChanger(ast.NodeTransformer):
                 if isinstance(n, _ast.Call) and self.functionName[self.functionName.rfind(".") + 1:] in unparse(n):
                     self.change_param(n)
             self.listChanges.append("Updated content: \n" + unparse(node))
+            self.dict_change[node.lineno] = node
         return node
 
     def transform(self, tree):
@@ -131,10 +136,12 @@ class KeywordParamChanger(ast.NodeTransformer):
         # print("Updated code: ")
         print_code(tree)
         # print("----------------------------------------------------------------------------------------------------")
+        return self.dict_change
 
 class ApiNameTransformer(ast.NodeTransformer):
     functionName = ""
     newApiName = ""
+    dict_change = {}
 
     def __init__(self, fname, newname, list_line_number, list_found_api):
         self.list_line_number = list_line_number
@@ -264,12 +271,11 @@ class ApiNameTransformer(ast.NodeTransformer):
             #     if isinstance(n, _ast.Call):
             #         self.name_transformer(n)
             # self.listChanges.append("Updated content: \n" + unparse(node))
+            self.dict_change[node.lineno] = node
         return node
 
     def transform(self, tree):
         # print_code(tree)
-
-
         # First check if the change is only at the end or also change the API parent object/class
         # Compare the oldapiname and the newapiname
         split_old = self.oldApiName.split(".")
@@ -313,21 +319,20 @@ class ApiNameTransformer(ast.NodeTransformer):
                 self.change_whole = True
             # Change the whole function
             # Will need to change the import!
-            print("change whole function")
+            # print("change whole function")
 
             # new parent name
             parent_name = ".".join(split_new[0:-1])
             new_api_name = split_new[-1]
 
-            for node in ast.walk(tree):
-                if type(node) == ast.ImportFrom:
-                    print(node)
-                    print(ast.dump(node))
+            # for node in ast.walk(tree):
+            #     if type(node) == ast.ImportFrom:
+            #         print(node)
+            #         print(ast.dump(node))
 
             # Create the new import statement first
             import_node = ast.ImportFrom(module=parent_name, names=[alias(name=new_api_name, asname=None)], level=0)
 
-            print(ast.dump(tree))
             # add the new import just before the first API invocation for now
             # TODO: Think of better placement of the new import
             print("THIS IS LIST LINE NUMBER")
@@ -339,9 +344,11 @@ class ApiNameTransformer(ast.NodeTransformer):
             self.visit(tree)
             if self.need_to_add_import:
                 tree.body.insert(self.list_line_number[0] - 1, import_node)
+                self.dict_change[self.list_line_number[0] - 1] = import_node
 
 
             print_code(tree)
+            return self.dict_change
 
 
         # self.visit(tree)
@@ -353,6 +360,7 @@ class PositionalToKeyword(ast.NodeTransformer):
     parameterName = ""
     listChanges = []
     list_line_number = []
+    dict_change = {}
 
     def __init__(self, api_name, param_position, new_keyword, list_line_number):
         self.functionName = api_name
@@ -383,6 +391,7 @@ class PositionalToKeyword(ast.NodeTransformer):
             listKeyword.append(new_keyword)
             node.args = listPositionalParam
             node.keywords = listKeyword
+
 
         # listKeywordParam = getKeywordArguments(node)
         #
@@ -418,6 +427,7 @@ class PositionalToKeyword(ast.NodeTransformer):
                     if not isExist:
                         self.positional_to_keyword(n)
             self.listChanges.append("Updated content: \n" + unparse(node))
+            self.dict_change[node.lineno] = node
         return node
 
     def transform(self, tree):
@@ -426,6 +436,7 @@ class PositionalToKeyword(ast.NodeTransformer):
         # print("Updated code: ")
         print_code(tree)
         # print("----------------------------------------------------------------------------------------------------")
+        return self.dict_change
 
 # Remove positional parameter
 # TODO - NOT DONE YET
@@ -485,6 +496,7 @@ class AddNewParameter(ast.NodeTransformer):
     parameterName = ""
     listChanges = []
     list_line_number = []
+    dict_change = {}
 
     def __init__(self, api_name, parameter_name, parameter_type, parameter_value, list_line_number):
         self.functionName = api_name
@@ -559,6 +571,7 @@ class AddNewParameter(ast.NodeTransformer):
                     if not isExist:
                         self.add_new_parameter(n)
             self.listChanges.append("Updated content: \n" + unparse(node))
+            self.dict_change[node.lineno] = node
         return node
 
     def transform(self, tree):
@@ -567,6 +580,7 @@ class AddNewParameter(ast.NodeTransformer):
         # print("Updated code: ")
         print_code(tree)
         # print("----------------------------------------------------------------------------------------------------")
+        return self.dict_change
 
 
 
