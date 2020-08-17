@@ -7,16 +7,23 @@ from api_formatter import *
 from input_utils import ApiSignature
 import re
 
+class ChangeNode:
+    def __init__(self):
+        print()
+
 # Helper function to get the list of line number
 def get_list_API(tree, api_signature: ApiSignature):
     api_name = api_signature.api_name
     list_api, import_dict, from_import_dict = process_api_format(tree, api_name)
     list_deprecated_api = []
     list_completed_api = []
+    print("This is list api: ")
+    print(api_signature)
     for api in list_api:
         if api_name.strip() == api["name"].strip():
             key_is_correct = True
             list_deprecated_api.append(api)
+            print(api)
 
     for api in list_deprecated_api:
         print("This is API")
@@ -57,8 +64,6 @@ class KeywordParamRemover(ast.NodeTransformer):
                     if key_ast.arg == self.parameterName:
                         keyword_ast.remove(key_ast)
                 node.keywords = keyword_ast
-
-
 
     def visit_Call(self, node: Call):
         if node.lineno in self.list_line_number:
@@ -156,6 +161,7 @@ class ApiNameTransformer(ast.NodeTransformer):
 
     def visit_Call(self, node: Call):
         if node.lineno in self.list_line_number:
+            actual_node_pos = node.lineno
             actual_api = {}
             for api in self.found_api:
                 # found the actual api
@@ -266,15 +272,10 @@ class ApiNameTransformer(ast.NodeTransformer):
                     newInvocation = ast.Call(func=Name(id=self.newApiName.split(".")[-1], ctx=context), args=positional_arg, keywords=keyword_arg)
                     node = newInvocation
 
+            # Hard code way to set the line position of the node
+            node.lineno = actual_node_pos
+            self.dict_change[actual_node_pos] = node
 
-            tempString = ""
-            # self.name_transformer(node)
-            # listScope = recurseScope(node)
-            # for n in listScope:
-            #     if isinstance(n, _ast.Call):
-            #         self.name_transformer(n)
-            # self.listChanges.append("Updated content: \n" + unparse(node))
-            self.dict_change[node.lineno] = node
         return node
 
     def transform(self, tree):
@@ -346,12 +347,14 @@ class ApiNameTransformer(ast.NodeTransformer):
             self.need_to_add_import = False
             self.visit(tree)
             if self.need_to_add_import:
-                tree.body.insert(self.list_line_number[0] - 1, import_node)
-                self.dict_change[self.list_line_number[0] - 1] = import_node
+                tree.body.insert(0, import_node)
+                self.dict_change[0] = import_node
 
 
             # print_code(tree)
             return self.dict_change
+        else:
+            return {}
 
 
         # self.visit(tree)
