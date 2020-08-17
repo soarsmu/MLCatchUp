@@ -35,33 +35,113 @@ from input_utils import ApiSignature
 
 
 # Input: List of DSL commands, filename to be processed with the commands, and api_name
-# Output: File is processed with the DSL
+# Output: Tree, List Edited Lines
 def run_DSL(list_DSL, filename, api_signature: ApiSignature):
+    print("DSL COMMANDS: ")
+    original_api_name = api_signature.api_name
+    for DSL in list_DSL:
+        print(DSL)
     with open(filename, "r", encoding="utf-8") as file:
         tree = ast.parse(file.read())
         api_name = api_signature.api_name
+        list_edited_line = {}
         for dsl in list_DSL:
             list_completed_api = get_list_API(tree, api_signature)
             list_line_number = get_list_line_number(list_completed_api)
+            print("LIST COMPLETED API: " + list_completed_api.__str__())
             splitted_dsl = dsl.split(" ")
+            print("LIST EDITED LINE: ")
+            print(list_edited_line.__str__())
             if splitted_dsl[0] == "RENAME_API":
                 print("RENAMING API")
                 new_name = splitted_dsl[3]
                 nameTransformer = ApiNameTransformer(api_name, new_name, list_line_number, list_completed_api)
-                nameTransformer.transform(tree)
+                dict_change = nameTransformer.transform(tree)
+
+                for key, value in dict_change.items():
+                    list_edited_line[key] = value
                 # Convert the API name into the new name for future detection
                 api_name = new_name
-                api_signature.api_name = api_name
+                api_signature.api_name = new_name
             elif splitted_dsl[0] == "ADD_PARAM":
                 print("ADDING PARAM")
-
                 param_name = splitted_dsl[1]
                 param_value = splitted_dsl[3]
                 # currently default to call until there is new way to detect the type
                 param_type = "call"
-                print("API NAME: " + api_name)
                 addParamTransformer = AddNewParameter(api_name, param_name, param_type, param_value, list_line_number)
-                addParamTransformer.transform(tree)
+                dict_change = addParamTransformer.transform(tree)
+                for key, value in dict_change.items():
+                    list_edited_line[key] = value
+            elif splitted_dsl[0] == "POSITIONAL_TO_KEYWORD":
+                print("POSITIONAL TO KEYWORD")
+                param_position = splitted_dsl[2]
+                param_keyword = splitted_dsl[4]
+                positionalToKeywordTransformer = PositionalToKeyword(api_name, param_position, param_keyword, list_line_number)
+                dict_change = positionalToKeywordTransformer.transform(tree)
+                for key, value in dict_change.items():
+                    list_edited_line[key] = value
+        print("Finished processing the DSL")
+        print("List edited line: ")
+        for key, value in list_edited_line.items():
+            print("Line - " + key.__str__() + ": " + unparse(value))
+        api_signature.api_name = original_api_name
+        return tree, list_edited_line
+
+# Input: modified tree and list diff from the Run_DSL function and the filename to be changed
+# Output: Dictionary with key being the position of the diff and the value being a
+# tuples of the old value and list of the new value
+def get_list_diff(tree, list_diff, filename):
+    list_position = list(list_diff.keys())
+    list_position.remove(0)
+    old_tree = ast.parse(open(filename, encoding="utf-8").read())
+
+    with open("old_file.py", "w", encoding="utf-8") as old_open:
+        old_open.write(unparse(old_tree))
+
+    with open("new_file.py", "w", encoding="utf-8") as new_open:
+        new_open.write(unparse(tree))
+
+    old_list = unparse(old_tree).split("\n")
+    new_list = unparse(tree).split("\n")
+
+    diff_dict = {}
+    i = 0
+    position = 1
+    while i < len(old_list):
+        if old_list[i] == new_list[i]:
+            old_list.pop(i)
+            new_list.pop(i)
+            position += 1
+        elif new_list[i][0:4] == "from":
+            print("FROM STATEMENT DETECTED")
+            # Special case if import statement in the new key
+            diff_dict[1] = "", [new_list.pop(i)]
+            position += 1
+        else:
+            old_key = old_list.pop(i)
+            new_key = [new_list.pop(i)]
+
+            # while current_old != current_new:
+            #     new_key.append(new_list.pop(i))
+            #     current_new = new_list[i]
+            #     print("DCGH")
+            #     print(old_key)
+            #     print(new_key)
+            #     print("ABCD")
+            #     print(current_new)
+            #     print(current_old)
+
+            # If cannot pop, probably an import statement, so just put it on front 1
+            try:
+                actual_position = list_position.pop(0)
+            except:
+                actual_position = 1
+            while len(list_position) > 0 and list_position[0] < position:
+                actual_position = list_position.pop(0)
+            diff_dict[actual_position] = old_key, new_key
+            position += 1
+    return diff_dict
 
 #
 # # The source file is the 1st argument to the script
