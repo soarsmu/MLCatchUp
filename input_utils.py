@@ -3,6 +3,7 @@
 import sys
 import os
 from DSL import *
+import re
 
 # Class to parse the api parameter string and parse it accordingly
 # e.g. api_parameter("param1:torch.IntTensor=torch.tensor(0)")
@@ -279,7 +280,12 @@ def list_all_differences(old_api: ApiSignature, new_api: ApiSignature):
     print(new_api)
 
     # 1. Get positional param to keyword param transformation
-    get_positional_to_keyword_param(old_api, new_api)
+    positional_to_keyword_dict = get_positional_to_keyword_param(old_api, new_api)
+    for key, value in positional_to_keyword_dict.items():
+        if key.position > 0:
+            dsl = "POSITIONAL_TO_KEYWORD POSITION " + key.position.__str__() + " KEYWORD " + value.param_name
+            list_differences.append(dsl)
+
     # 2. Approximate name change for the parameter
     get_api_mapping(old_api, new_api)
     # 3. Process leftover positional parameter and keyword parameter from old API
@@ -306,3 +312,67 @@ def list_all_differences(old_api: ApiSignature, new_api: ApiSignature):
 
 
     return list_differences
+
+
+# Input: Transformation dictionary from the get_list_diff function and the filename
+# Output: file is transformed
+def apply_transformation(transformation_dictionary, filename):
+    list_position = list(transformation_dictionary.keys())
+    print(list_position)
+    # Read the file into lines
+    file_line_list = []
+    with open(filename, "r", encoding="utf-8") as f:
+        file_line_list = f.readlines()
+        f.close()
+    # Traverse in reverse to conduct the transformation
+
+    for i, line in reversed(list(enumerate(file_line_list))):
+        # Special case if index is one
+        print(i)
+        if i == 1 and i in list_position:
+            print("Special case for from import")
+            old_value, new_value_list = transformation_dictionary[i]
+            new_value = ""
+            for value in new_value_list:
+                new_value = new_value + value + "\n"
+            file_line_list.insert(0, new_value)
+        # if current index is available in list position
+        elif i in list_position:
+            old_value, new_value_list = transformation_dictionary[i]
+            new_value = ""
+
+            # Check multiline to make sure that the total of the multiline makes the old value. Use strip!
+            old_value = re.sub('[()]', '', "".join(old_value.split()))
+            current_value = re.sub('[()]', '', "".join(file_line_list[i - 1].split()))
+            num_to_delete = 0
+            # Change the method into removing the old value little by little
+            while len(old_value) > 0:
+                if current_value in old_value:
+                    print("HEERREEE")
+                    print(current_value)
+                    print(old_value)
+                    old_value = old_value.replace(current_value, '')
+                    current_value = re.sub('[()]', '', "".join(file_line_list[i + num_to_delete].split()))
+                    num_to_delete += 1
+                else:
+                    if num_to_delete > 0:
+                        num_to_delete += 1
+                    break
+
+            # while current_value != old_value:
+            #     print("HERE")
+            #     print(current_value)
+            #     print(old_value)
+            #     current_value = current_value + re.sub('[()]', '', "".join(file_line_list[i + num_to_delete].split()))
+            #     num_to_delete += 1
+            while num_to_delete > 1:
+                file_line_list.pop(i)
+                num_to_delete -= 1
+            for value in new_value_list:
+                new_value = new_value + value + "\n"
+            file_line_list[i - 1] = new_value
+
+    with open("updated_" + filename, "w", encoding="utf-8") as f:
+        for line in file_line_list:
+            f.write(line)
+        f.close()
