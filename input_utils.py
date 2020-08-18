@@ -354,9 +354,17 @@ def apply_transformation(transformation_dictionary, filename):
             num_to_delete = 0
             # Change the method into removing the old value little by little
             while len(old_value) > 0:
+                # Should remove comments from current_value
+                index_comment = current_value.find('#')
+                if index_comment != -1:
+                    current_value = current_value[:index_comment]
                 if current_value in old_value:
                     old_value = old_value.replace(current_value, '')
-                    current_value = re.sub('[()]', '', "".join(file_line_list[i + num_to_delete].split()))
+                    try:
+                        current_value = re.sub('[()]', '', "".join(file_line_list[i + num_to_delete].split()))
+                    except:
+                        # If except, probably the last line of the file
+                        current_value = ""
                     num_to_delete += 1
                 else:
                     if num_to_delete > 0:
