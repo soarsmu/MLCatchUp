@@ -19,11 +19,15 @@ def get_list_API(tree, api_signature: ApiSignature):
     list_completed_api = []
     print("This is list api: ")
     print(api_signature)
+    print("HOW")
+    print(list_api)
     for api in list_api:
-        if api_name.strip() == api["name"].strip():
-            key_is_correct = True
-            list_deprecated_api.append(api)
-            print(api)
+        if api_name.strip() in api["name"].strip():
+            temp = api["name"].strip().replace(api_name.strip(), '')
+            if len(temp) == 0 or temp[0] == ".":
+                key_is_correct = True
+                list_deprecated_api.append(api)
+                print(api)
 
     for api in list_deprecated_api:
         print("This is API")
