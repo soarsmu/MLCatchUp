@@ -81,6 +81,13 @@ def run_DSL(list_DSL, filename, api_signature: ApiSignature):
                 dict_change = positionalToKeywordTransformer.transform(tree)
                 for key, value in dict_change.items():
                     list_edited_line[key] = value
+            elif splitted_dsl[0] == "REMOVE_KEYWORD_PARAM":
+                print("REMOVE KEYWORD PARAM")
+                deleted_keyword = splitted_dsl[1]
+                keywordRemover = KeywordParamRemover(api_name, deleted_keyword, list_line_number)
+                dict_change = keywordRemover.transform(tree)
+                for key, value in dict_change.items():
+                    list_edited_line[key] = value
         print("Finished processing the DSL")
         print("List edited line: ")
         for key, value in list_edited_line.items():
@@ -93,7 +100,10 @@ def run_DSL(list_DSL, filename, api_signature: ApiSignature):
 # tuples of the old value and list of the new value
 def get_list_diff(tree, list_diff, filename):
     list_position = list(list_diff.keys())
-    list_position.remove(0)
+    try:
+        list_position.remove(0)
+    except:
+        print("No import add")
     old_tree = ast.parse(open(filename, encoding="utf-8").read())
 
     with open("old_file.py", "w", encoding="utf-8") as old_open:

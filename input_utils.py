@@ -283,11 +283,14 @@ def list_all_differences(old_api: ApiSignature, new_api: ApiSignature):
     positional_to_keyword_dict = get_positional_to_keyword_param(old_api, new_api)
     for key, value in positional_to_keyword_dict.items():
         if key.position > 0:
-            dsl = "POSITIONAL_TO_KEYWORD POSITION " + key.position.__str__() + " KEYWORD " + value.param_name
+            dsl = "POSITIONAL_TO_KEYWORD POSITION " + key.position.__str__() + " KEYWORD " + value.param_name + " FOR " + old_name
             list_differences.append(dsl)
 
     # 2. Approximate name change for the parameter
     get_api_mapping(old_api, new_api)
+    # Process the API name change mapping
+    
+
     # 3. Process leftover positional parameter and keyword parameter from old API
     #    The leftovers should be deleted
     list_deleted_pos_param = old_api.positional_param
@@ -297,6 +300,11 @@ def list_all_differences(old_api: ApiSignature, new_api: ApiSignature):
     list_deleted_key_param = old_api.keyword_param
     print("Deleted key param")
     print(list_deleted_key_param)
+    for param in list_deleted_key_param:
+        removed_name = param.param_name
+        dsl = "REMOVE_KEYWORD_PARAM " + removed_name + " FOR " + old_name
+        list_differences.append(dsl)
+
     # 5. Then, process the leftovers parameter from the new API
     #    The leftovers from the new API should be added (e.g. a new default parameter)
     list_new_param = new_api.positional_param + new_api.keyword_param
@@ -305,7 +313,7 @@ def list_all_differences(old_api: ApiSignature, new_api: ApiSignature):
     for param in list_new_param:
         # If has default value
         if param.param_default_value:
-            dsl = "ADD_PARAM " + param.param_name + " WITH_VALUE " + param.param_default_value
+            dsl = "ADD_PARAM " + param.param_name + " WITH_VALUE " + param.param_default_value + " FOR " + old_name
             list_differences.append(dsl)
     print("DSL LIST: ")
     print(list_differences)
@@ -328,7 +336,6 @@ def apply_transformation(transformation_dictionary, filename):
 
     for i, line in reversed(list(enumerate(file_line_list))):
         # Special case if index is one
-        print(i)
         if i == 1 and i in list_position:
             print("Special case for from import")
             old_value, new_value_list = transformation_dictionary[i]
@@ -348,9 +355,6 @@ def apply_transformation(transformation_dictionary, filename):
             # Change the method into removing the old value little by little
             while len(old_value) > 0:
                 if current_value in old_value:
-                    print("HEERREEE")
-                    print(current_value)
-                    print(old_value)
                     old_value = old_value.replace(current_value, '')
                     current_value = re.sub('[()]', '', "".join(file_line_list[i + num_to_delete].split()))
                     num_to_delete += 1
