@@ -263,9 +263,10 @@ def list_all_differences(old_api: ApiSignature, new_api: ApiSignature):
     # First, check name
     old_name, new_name = old_api.api_name, new_api.api_name
 
-    if old_name != new_name:
-        # Add update name query
-        list_differences.append("RENAME_API " + old_name + " TO " + new_name)
+    if new_name == "":
+        dsl = "REMOVE_API " + old_name
+        list_differences.append(dsl)
+        return list_differences
 
     # Then check the parameter
     # Remove same parameter first
@@ -315,6 +316,14 @@ def list_all_differences(old_api: ApiSignature, new_api: ApiSignature):
         if param.param_default_value:
             dsl = "ADD_PARAM " + param.param_name + " WITH_VALUE " + param.param_default_value + " FOR " + old_name
             list_differences.append(dsl)
+
+    print("OLDIE")
+    print(old_name)
+    print(new_name)
+
+    if old_name != new_name:
+        # Add update name query
+        list_differences.append("RENAME_API " + old_name + " TO " + new_name)
     print("DSL LIST: ")
     print(list_differences)
 
@@ -335,8 +344,16 @@ def apply_transformation(transformation_dictionary, filename):
     # Traverse in reverse to conduct the transformation
 
     for i, line in reversed(list(enumerate(file_line_list))):
+        # Special case if in last line
+        if i == (len(file_line_list) - 1) and (i + 1) in list_position:
+            print("Last line")
+            new_value = ""
+            old_value, new_value_list = transformation_dictionary[i + 1]
+            for value in new_value_list:
+                new_value = new_value + value + "\n"
+            file_line_list[i] = new_value
         # Special case if index is one
-        if i == 1 and i in list_position:
+        elif i == 1 and i in list_position:
             print("Special case for from import")
             old_value, new_value_list = transformation_dictionary[i]
             new_value = ""
@@ -345,6 +362,8 @@ def apply_transformation(transformation_dictionary, filename):
             file_line_list.insert(0, new_value)
         # if current index is available in list position
         elif i in list_position:
+            print("Replacing the value")
+            print(file_line_list[i])
             old_value, new_value_list = transformation_dictionary[i]
             new_value = ""
 
@@ -354,6 +373,9 @@ def apply_transformation(transformation_dictionary, filename):
             num_to_delete = 0
             # Change the method into removing the old value little by little
             while len(old_value) > 0:
+                print("Masuk while")
+                print(old_value)
+                print(current_value)
                 # Should remove comments from current_value
                 index_comment = current_value.find('#')
                 if index_comment != -1:
@@ -367,10 +389,15 @@ def apply_transformation(transformation_dictionary, filename):
                         current_value = ""
                     num_to_delete += 1
                 else:
+                    # Special case if the leftover is zero
+                    if old_value == "0":
+                        break
                     if num_to_delete > 0:
                         num_to_delete += 1
                     break
 
+            print("Num to delete:")
+            print(num_to_delete)
             # while current_value != old_value:
             #     print("HERE")
             #     print(current_value)
@@ -378,13 +405,28 @@ def apply_transformation(transformation_dictionary, filename):
             #     current_value = current_value + re.sub('[()]', '', "".join(file_line_list[i + num_to_delete].split()))
             #     num_to_delete += 1
             while num_to_delete > 1:
-                file_line_list.pop(i)
+
+                popped = file_line_list.pop(i)
+                print("Popped")
+                print(popped)
                 num_to_delete -= 1
             for value in new_value_list:
                 new_value = new_value + value + "\n"
+
+            # Fixing indentation here
+            # Get previous line
+            previous_line = file_line_list[i - 1]
+            # Get the actual indentation
+            actual_indentation = re.match(r"\s*", previous_line).group()
+            if new_value != "":
+                new_value = actual_indentation + new_value.lstrip()
+
             file_line_list[i - 1] = new_value
+            print("Updating value:")
+            print(file_line_list[i - 1])
 
     with open("updated_" + filename, "w", encoding="utf-8") as f:
+        print("Before printing the updated file")
         for line in file_line_list:
             f.write(line)
         f.close()

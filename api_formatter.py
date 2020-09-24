@@ -210,5 +210,6 @@ def process_api_format(tree, api_name):
     api_formatter_visitor = ApiFormatterVisitor(import_dict, from_import_dict, assign_dict, api_name)
     api_formatter_visitor.visit(tree)
 
+
     list_api = api_formatter_visitor.return_list
     return list_api, import_dict, from_import_dict

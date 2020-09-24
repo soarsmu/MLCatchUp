@@ -45,7 +45,11 @@ def run_DSL(list_DSL, filename, api_signature: ApiSignature):
         tree = ast.parse(file.read())
         api_name = api_signature.api_name
         list_edited_line = {}
+        positional_skip = 0
         for dsl in list_DSL:
+            # Positional skip is used to mitigate the effect of the previous-existing positional param being removed
+            # For example, due to positional_to_keyword or positional_param_remove
+
             list_completed_api = get_list_API(tree, api_signature)
             list_line_number = get_list_line_number(list_completed_api)
             print("LIST COMPLETED API: " + list_completed_api.__str__())
@@ -77,8 +81,9 @@ def run_DSL(list_DSL, filename, api_signature: ApiSignature):
                 print("POSITIONAL TO KEYWORD")
                 param_position = splitted_dsl[2]
                 param_keyword = splitted_dsl[4]
-                positionalToKeywordTransformer = PositionalToKeyword(api_name, param_position, param_keyword, list_line_number)
+                positionalToKeywordTransformer = PositionalToKeyword(api_name, int(param_position) - positional_skip, param_keyword, list_line_number)
                 dict_change = positionalToKeywordTransformer.transform(tree)
+                positional_skip += 1
                 for key, value in dict_change.items():
                     list_edited_line[key] = value
             elif splitted_dsl[0] == "REMOVE_KEYWORD_PARAM":
@@ -88,6 +93,16 @@ def run_DSL(list_DSL, filename, api_signature: ApiSignature):
                 dict_change = keywordRemover.transform(tree)
                 for key, value in dict_change.items():
                     list_edited_line[key] = value
+            elif splitted_dsl[0] == "REMOVE_API":
+                print("REMOVE API USAGE")
+                apiRemover = RemoveAPI(api_name, list_line_number)
+                dict_change = apiRemover.transform(tree)
+                print("IMPORTANT DICT CHANGE")
+                print(dict_change)
+                for key, value in dict_change.items():
+                    list_edited_line[key] = value
+
+
         print("Finished processing the DSL")
         print("List edited line: ")
         for key, value in list_edited_line.items():
@@ -115,6 +130,7 @@ def get_list_diff(tree, list_diff, filename):
     old_list = unparse(old_tree).split("\n")
     new_list = unparse(tree).split("\n")
 
+    print("List position before loop: " + list_position.__str__())
     diff_dict = {}
     i = 0
     position = 1
@@ -143,14 +159,25 @@ def get_list_diff(tree, list_diff, filename):
             #     print(current_old)
 
             # If cannot pop, probably an import statement, so just put it on front 1
+
+
             try:
                 actual_position = list_position.pop(0)
             except:
                 actual_position = 1
-            while len(list_position) > 0 and list_position[0] < position:
-                actual_position = list_position.pop(0)
-            diff_dict[actual_position] = old_key, new_key
+            # while len(list_position) > 0 and list_position[0] < position:
+            #     actual_position = list_position.pop(0)
+            print("LISTPOST")
+
+            print(list_position)
+            if "EMPTYSHOULDBEDELETED" in new_key.__str__():
+                print("NEW KEY SHOULD BE EMPTY")
+                diff_dict[actual_position] = old_key, ""
+            else:
+                print(new_key)
+                diff_dict[actual_position] = old_key, new_key
             position += 1
+
     return diff_dict
 
 #

@@ -22,12 +22,17 @@ def get_list_API(tree, api_signature: ApiSignature):
     print("HOW")
     print(list_api)
     for api in list_api:
+
         if api_name.strip() in api["name"].strip():
+            print("IN")
+            print("Api: " + api.__str__())
             temp = api["name"].strip().replace(api_name.strip(), '')
-            if len(temp) == 0 or temp[0] == ".":
-                key_is_correct = True
-                list_deprecated_api.append(api)
-                print(api)
+            list_completed_api.append(api)
+            # print(temp)
+            # if len(temp) == 0 or temp[0] == ".":
+            #     key_is_correct = True
+            #     list_deprecated_api.append(api)
+            #     print(api)
 
     for api in list_deprecated_api:
         print("This is API")
@@ -164,7 +169,11 @@ class ApiNameTransformer(ast.NodeTransformer):
         super().__init__()
 
     def visit_Call(self, node: Call):
-        if node.lineno in self.list_line_number:
+        # Add extra check for the function name
+        last_part_oldname = self.oldApiName[self.oldApiName.rfind(".") + 1:]
+
+
+        if node.lineno in self.list_line_number and last_part_oldname in unparse(node):
             actual_node_pos = node.lineno
             actual_api = {}
             for api in self.found_api:
@@ -363,6 +372,31 @@ class ApiNameTransformer(ast.NodeTransformer):
 
         # self.visit(tree)
         # print_code(tree)
+
+# Remove API visitor
+class RemoveAPI(ast.NodeTransformer):
+    functionName = ""
+    list_line_number = ""
+    dict_change = {}
+
+    def __init__(self, api_name, list_line_number):
+        self.functionName = api_name
+        self.list_line_number = list_line_number
+        self.dict_change = {}
+
+    def visit_Call(self, node: Call):
+        if node.lineno in self.list_line_number:
+            newInvocation = ast.Call(func=Name(id="EMPTYSHOULDBEDELETED"), args=[], keywords=[])
+            original_lineNo= node.lineno
+            node = newInvocation
+            self.dict_change[original_lineNo] = newInvocation
+        return node
+
+    def transform(self, tree):
+        self.visit(tree)
+        print("Result dict change from transformer")
+        print(self.dict_change)
+        return self.dict_change
 
 # Convert positional parameter to keyword parameter
 class PositionalToKeyword(ast.NodeTransformer):
