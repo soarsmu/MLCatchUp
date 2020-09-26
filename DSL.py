@@ -46,6 +46,7 @@ def run_DSL(list_DSL, filename, api_signature: ApiSignature):
         api_name = api_signature.api_name
         list_edited_line = {}
         positional_skip = 0
+        hasConstraint = False
         for dsl in list_DSL:
             # Positional skip is used to mitigate the effect of the previous-existing positional param being removed
             # For example, due to positional_to_keyword or positional_param_remove
@@ -101,6 +102,36 @@ def run_DSL(list_DSL, filename, api_signature: ApiSignature):
                 print(dict_change)
                 for key, value in dict_change.items():
                     list_edited_line[key] = value
+            # Process the constraint here
+
+            ifIndex = -1
+            for index, element in enumerate(splitted_dsl):
+                if element == "IF":
+                    hasConstraint = True
+                    ifIndex = index
+                    break
+            # Need to add value constraint here
+            code_string = ""
+            if hasConstraint:
+                # Check if the constraint has not
+                hasNot = False
+                if splitted_dsl[ifIndex + 1] == "NOT":
+                    hasNot = True
+                    ifIndex = ifIndex + 1
+                parameter_name = splitted_dsl[ifIndex + 1]
+                constraint_String = splitted_dsl[ifIndex + 2] + " " + splitted_dsl[ifIndex + 3]
+                not_string = ""
+                if hasNot:
+                    not_string = "not "
+                if constraint_String == "HAS TYPE":
+                    print("Type constraint")
+                    type_string = splitted_dsl[ifIndex + 4]
+                    code_string = "if "+ not_string + "isinstance(" + "TEMPORARY_PARAMETER_NAME" + ", " + type_string + "):"
+                elif constraint_String == "HAS VALUE":
+                    print("Value constraint")
+                    value_string = splitted_dsl[ifIndex + 4]
+                    code_string = "if " + not_string + "TEMPORARY_PARAMETER_NAME" + " " + value_string + ":"
+
 
 
         print("Finished processing the DSL")
@@ -108,7 +139,7 @@ def run_DSL(list_DSL, filename, api_signature: ApiSignature):
         for key, value in list_edited_line.items():
             print("Line - " + key.__str__() + ": " + unparse(value))
         api_signature.api_name = original_api_name
-        return tree, list_edited_line
+        return tree, list_edited_line, hasConstraint, code_string, parameter_name
 
 # Input: modified tree and list diff from the Run_DSL function and the filename to be changed
 # Output: Dictionary with key being the position of the diff and the value being a
@@ -172,7 +203,7 @@ def get_list_diff(tree, list_diff, filename):
             print(list_position)
             if "EMPTYSHOULDBEDELETED" in new_key.__str__():
                 print("NEW KEY SHOULD BE EMPTY")
-                diff_dict[actual_position] = old_key, ""
+                diff_dict[actual_position] = old_key, ["pass"]
             else:
                 print(new_key)
                 diff_dict[actual_position] = old_key, new_key

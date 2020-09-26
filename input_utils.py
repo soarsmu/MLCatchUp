@@ -259,12 +259,13 @@ def get_positional_to_keyword_param(old_api: ApiSignature, new_api: ApiSignature
 # Helper function to list all the differences between old api and new api
 # Return it in the form of list of DSL string that defines all the transformations
 def list_all_differences(old_api: ApiSignature, new_api: ApiSignature):
+    print("LIST ALL DIFFERENCES")
     list_differences = []
     # First, check name
     old_name, new_name = old_api.api_name, new_api.api_name
 
     if new_name == "":
-        dsl = "REMOVE_API " + old_name
+        dsl = "REMOVE_API " + old_name  + " IF upper HAS TYPE sometype"
         list_differences.append(dsl)
         return list_differences
 
@@ -324,6 +325,7 @@ def list_all_differences(old_api: ApiSignature, new_api: ApiSignature):
     if old_name != new_name:
         # Add update name query
         list_differences.append("RENAME_API " + old_name + " TO " + new_name)
+        # list_differences.append("RENAME_API " + old_name + " TO " + new_name + " IF someparam HAS TYPE sometype")
     print("DSL LIST: ")
     print(list_differences)
 
@@ -333,7 +335,7 @@ def list_all_differences(old_api: ApiSignature, new_api: ApiSignature):
 
 # Input: Transformation dictionary from the get_list_diff function and the filename
 # Output: file is transformed
-def apply_transformation(transformation_dictionary, filename):
+def apply_transformation(transformation_dictionary, filename, has_constraint=False, code_string="", constraint_parameter=""):
     list_position = list(transformation_dictionary.keys())
     print(list_position)
     # Read the file into lines
@@ -351,6 +353,29 @@ def apply_transformation(transformation_dictionary, filename):
             old_value, new_value_list = transformation_dictionary[i + 1]
             for value in new_value_list:
                 new_value = new_value + value + "\n"
+
+            previous_line = file_line_list[i]
+            # Get the actual indentation
+            actual_indentation = re.match(r"\s*", previous_line).group()
+            if new_value != "":
+                new_value = actual_indentation + new_value.lstrip()
+            if has_constraint:
+                # Need to find the value of the parameter first
+                api_invocation = file_line_list[i]
+                param_index = api_invocation.find(constraint_parameter)
+                if param_index != -1:
+                    api_invocation = api_invocation[param_index + len(constraint_parameter):-1]
+                    parameter_string = api_invocation[0]
+                    current_char = api_invocation[1]
+                    current_index = 1
+                    while current_char != "," and current_char != ")" and current_index < len(api_invocation):
+                        parameter_string = parameter_string + current_char
+                        current_index += 1
+                        current_char = api_invocation[current_index]
+                    parameter_string = parameter_string.lstrip().rstrip()
+                    parameter_string = parameter_string.replace("=", "")
+                    new_value = actual_indentation + code_string + "\n    " + new_value + actual_indentation + "else:\n    " + file_line_list[i]
+                    new_value = new_value.replace("TEMPORARY_PARAMETER_NAME", parameter_string)
             file_line_list[i] = new_value
         # Special case if index is one
         elif i == 1 and i in list_position:
@@ -420,6 +445,22 @@ def apply_transformation(transformation_dictionary, filename):
             actual_indentation = re.match(r"\s*", previous_line).group()
             if new_value != "":
                 new_value = actual_indentation + new_value.lstrip()
+            if has_constraint:
+                api_invocation = file_line_list[i - 1]
+                param_index = api_invocation.find(constraint_parameter)
+                if param_index != -1:
+                    api_invocation = api_invocation[param_index + len(constraint_parameter):-1]
+                    parameter_string = api_invocation[0]
+                    current_char = api_invocation[1]
+                    current_index = 1
+                    while current_char != "," and current_char != ")" and current_index < len(api_invocation):
+                        parameter_string = parameter_string + current_char
+                        current_index += 1
+                        current_char = api_invocation[current_index]
+                    parameter_string = parameter_string.lstrip().rstrip()
+                    parameter_string = parameter_string.replace("=", "")
+                    new_value = actual_indentation + code_string + "\n    " + new_value + actual_indentation + "else:\n    " + file_line_list[i - 1]
+                    new_value = new_value.replace("TEMPORARY_PARAMETER_NAME", parameter_string)
 
             file_line_list[i - 1] = new_value
             print("Updating value:")
