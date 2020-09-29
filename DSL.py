@@ -44,6 +44,7 @@ def run_DSL(list_DSL, filename, api_signature: ApiSignature):
     with open(filename, "r", encoding="utf-8") as file:
         tree = ast.parse(file.read())
         api_name = api_signature.api_name
+        parameter_name = ""
         list_edited_line = {}
         positional_skip = 0
         hasConstraint = False
@@ -76,6 +77,15 @@ def run_DSL(list_DSL, filename, api_signature: ApiSignature):
                 param_type = "call"
                 addParamTransformer = AddNewParameter(api_name, param_name, param_type, param_value, list_line_number)
                 dict_change = addParamTransformer.transform(tree)
+                for key, value in dict_change.items():
+                    list_edited_line[key] = value
+            elif splitted_dsl[0] == "RENAME_PARAMETER":
+                print("CHANGE PARAMETER NAME")
+                old_param_name = splitted_dsl[1]
+                new_param_name = splitted_dsl[3]
+                # currently default to call until there is new way to detect the type
+                renameParamTransformer = KeywordParamChanger(api_name, old_param_name, new_param_name, list_line_number)
+                dict_change = renameParamTransformer.transform(tree)
                 for key, value in dict_change.items():
                     list_edited_line[key] = value
             elif splitted_dsl[0] == "POSITIONAL_TO_KEYWORD":
@@ -208,7 +218,6 @@ def get_list_diff(tree, list_diff, filename):
                 print(new_key)
                 diff_dict[actual_position] = old_key, new_key
             position += 1
-
     return diff_dict
 
 #

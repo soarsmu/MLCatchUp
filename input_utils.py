@@ -289,7 +289,12 @@ def list_all_differences(old_api: ApiSignature, new_api: ApiSignature):
             list_differences.append(dsl)
 
     # 2. Approximate name change for the parameter
-    get_api_mapping(old_api, new_api)
+    mapping_dict = get_api_mapping(old_api, new_api)
+    print("Parameter mapping dictionary")
+    for key, value in mapping_dict.items():
+        dsl = "RENAME_PARAMETER " + key.param_name + " TO " + value.param_name + " FOR " + old_name
+        list_differences.append(dsl)
+
     # Process the API name change mapping
     
 

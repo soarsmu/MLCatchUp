@@ -24,10 +24,10 @@ if __name__ == "__main__":
     #     list_path.append(join(folder_path, f))
     for file in list_file:
         print("Processing file: " + file)
-        modified_tree, list_change = run_DSL(dsl_list, file, old_signature)
+        modified_tree, list_change, hasConstraint, code_string, parameter_name = run_DSL(dsl_list, file, old_signature)
         file_change_dictionary = get_list_diff(modified_tree, list_change, file)
         print("File change dictionary")
         print(file_change_dictionary)
-        apply_transformation(file_change_dictionary, file)
+        apply_transformation(file_change_dictionary, file, hasConstraint, code_string, parameter_name)
         print()
         print()
