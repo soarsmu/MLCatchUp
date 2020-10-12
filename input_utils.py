@@ -258,15 +258,19 @@ def get_positional_to_keyword_param(old_api: ApiSignature, new_api: ApiSignature
 
 # Helper function to list all the differences between old api and new api
 # Return it in the form of list of DSL string that defines all the transformations
-def list_all_differences(old_api: ApiSignature, new_api: ApiSignature):
+def list_all_differences(old_api: ApiSignature, new_api: ApiSignature, constraint=""):
     print("LIST ALL DIFFERENCES")
     list_differences = []
     # First, check name
     old_name, new_name = old_api.api_name, new_api.api_name
 
     if new_name == "":
-        dsl = "REMOVE_API " + old_name  + " IF upper HAS TYPE sometype"
+        # dsl = "REMOVE_API " + old_name  + " IF upper HAS TYPE sometype"
+        dsl = "REMOVE_API " + old_name
         list_differences.append(dsl)
+        if constraint != "":
+            for i in range(0, len(list_differences)):
+                list_differences[i] = list_differences[i] + " " + constraint
         return list_differences
 
     # Then check the parameter
@@ -333,7 +337,9 @@ def list_all_differences(old_api: ApiSignature, new_api: ApiSignature):
         # list_differences.append("RENAME_API " + old_name + " TO " + new_name + " IF someparam HAS TYPE sometype")
     print("DSL LIST: ")
     print(list_differences)
-
+    if constraint != "":
+        for i in range(0, len(list_differences)):
+            list_differences[i] = list_differences[i] + " " + constraint
 
     return list_differences
 
@@ -367,7 +373,23 @@ def apply_transformation(transformation_dictionary, filename, has_constraint=Fal
             if has_constraint:
                 # Need to find the value of the parameter first
                 api_invocation = file_line_list[i]
-                param_index = api_invocation.find(constraint_parameter)
+
+                # if the constraint parameter is positional
+                print("Constraint parameter: " + constraint_parameter)
+                if constraint_parameter.isnumeric():
+                    print("Constraint is numeric")
+                    index_comma = [i for i, ltr in enumerate(api_invocation) if ltr == ","]
+                    if constraint_parameter == "0":
+                        param_index = api_invocation.find("(")
+                    else:
+                        constraint_index = int(constraint_parameter)
+                        try:
+                            param_index = index_comma[constraint_index - 1]
+                        except Exception as E:
+                            print(E.__str__())
+                else:
+                    param_index = api_invocation.find(constraint_parameter)
+                print("Param index for constraint: " + param_index.__str__())
                 if param_index != -1:
                     api_invocation = api_invocation[param_index + len(constraint_parameter):-1]
                     parameter_string = api_invocation[0]
@@ -375,6 +397,11 @@ def apply_transformation(transformation_dictionary, filename, has_constraint=Fal
                     current_index = 1
                     while current_char != "," and current_char != ")" and current_index < len(api_invocation):
                         parameter_string = parameter_string + current_char
+                        if current_char == "(":
+                            while current_char != ")" and current_index < len(api_invocation):
+                                current_index += 1
+                                current_char = api_invocation[current_index]
+                                parameter_string = parameter_string + current_char
                         current_index += 1
                         current_char = api_invocation[current_index]
                     parameter_string = parameter_string.lstrip().rstrip()
@@ -452,7 +479,19 @@ def apply_transformation(transformation_dictionary, filename, has_constraint=Fal
                 new_value = actual_indentation + new_value.lstrip()
             if has_constraint:
                 api_invocation = file_line_list[i - 1]
-                param_index = api_invocation.find(constraint_parameter)
+                if constraint_parameter.isnumeric():
+                    print("Constraint is numeric")
+                    index_comma = [i for i, ltr in enumerate(api_invocation) if ltr == ","]
+                    if constraint_parameter == "0":
+                        param_index = api_invocation.find("(")
+                    else:
+                        constraint_index = int(constraint_parameter)
+                        try:
+                            param_index = index_comma[constraint_index - 1]
+                        except Exception as E:
+                            print(E.__str__())
+                else:
+                    param_index = api_invocation.find(constraint_parameter)
                 if param_index != -1:
                     api_invocation = api_invocation[param_index + len(constraint_parameter):-1]
                     parameter_string = api_invocation[0]
@@ -460,6 +499,12 @@ def apply_transformation(transformation_dictionary, filename, has_constraint=Fal
                     current_index = 1
                     while current_char != "," and current_char != ")" and current_index < len(api_invocation):
                         parameter_string = parameter_string + current_char
+                        if current_char == "(":
+                            while current_char != ")" and current_index < len(api_invocation):
+                                current_index += 1
+                                current_char = api_invocation[current_index]
+                                parameter_string = parameter_string + current_char
+
                         current_index += 1
                         current_char = api_invocation[current_index]
                     parameter_string = parameter_string.lstrip().rstrip()

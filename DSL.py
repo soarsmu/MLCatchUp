@@ -114,33 +114,39 @@ def run_DSL(list_DSL, filename, api_signature: ApiSignature):
                     list_edited_line[key] = value
             # Process the constraint here
 
+            print("Splitted DSL: " + splitted_dsl.__str__())
             ifIndex = -1
             for index, element in enumerate(splitted_dsl):
-                if element == "IF":
+                if element.lower() == "IF".lower():
                     hasConstraint = True
                     ifIndex = index
                     break
             # Need to add value constraint here
+            print("Does this have constraint? " + hasConstraint.__str__())
             code_string = ""
             if hasConstraint:
                 # Check if the constraint has not
                 hasNot = False
-                if splitted_dsl[ifIndex + 1] == "NOT":
+                if splitted_dsl[ifIndex + 1].lower() == "NOT".lower():
                     hasNot = True
                     ifIndex = ifIndex + 1
+                print("Does this has not? " + hasNot.__str__())
                 parameter_name = splitted_dsl[ifIndex + 1]
                 constraint_String = splitted_dsl[ifIndex + 2] + " " + splitted_dsl[ifIndex + 3]
                 not_string = ""
                 if hasNot:
                     not_string = "not "
-                if constraint_String == "HAS TYPE":
+                if constraint_String.lower() == "HAS TYPE".lower():
                     print("Type constraint")
                     type_string = splitted_dsl[ifIndex + 4]
                     code_string = "if "+ not_string + "isinstance(" + "TEMPORARY_PARAMETER_NAME" + ", " + type_string + "):"
-                elif constraint_String == "HAS VALUE":
+                elif constraint_String.lower() == "HAS VALUE".lower():
                     print("Value constraint")
-                    value_string = splitted_dsl[ifIndex + 4]
-                    code_string = "if " + not_string + "TEMPORARY_PARAMETER_NAME" + " " + value_string + ":"
+                    # value_string = splitted_dsl[ifIndex + 4]
+                    value_string = ""
+                    for i in range(ifIndex + 4, len(splitted_dsl)):
+                        value_string = value_string + " " + splitted_dsl[i]
+                    code_string = "if " + not_string + "TEMPORARY_PARAMETER_NAME" + value_string + ":"
 
 
 
@@ -148,6 +154,8 @@ def run_DSL(list_DSL, filename, api_signature: ApiSignature):
         print("List edited line: ")
         for key, value in list_edited_line.items():
             print("Line - " + key.__str__() + ": " + unparse(value))
+        print("Constraint string:")
+        print(code_string)
         api_signature.api_name = original_api_name
         return tree, list_edited_line, hasConstraint, code_string, parameter_name
 
