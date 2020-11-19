@@ -196,7 +196,6 @@ def eliminate_same_param(old_api: ApiSignature, new_api: ApiSignature):
 # Get the api mapping between the leftover old api parameter and the new api parameter
 # The targeted functionality is that the mapping will be inferred automatically
 # return a dictionary mapping between the old api parameter with the new api parameter
-# USABLE FOR CHANGE PARAMETER NAME DEPRECATION
 def get_api_mapping(old_api: ApiSignature, new_api: ApiSignature):
     return_dict = {}
     old_pos_param = old_api.positional_param
@@ -224,8 +223,6 @@ def get_api_mapping(old_api: ApiSignature, new_api: ApiSignature):
                 break
         if not same_param:
             i += 1
-    print("Api Mapping Dictionary")
-    print(return_dict)
     return return_dict
 
 
@@ -252,21 +249,18 @@ def get_positional_to_keyword_param(old_api: ApiSignature, new_api: ApiSignature
                 break
         if not same_param:
             i += 1
-    print("Positional to Keyword dictionary")
-    print(return_dict)
     return return_dict
 
 # Helper function to list all the differences between old api and new api
 # Return it in the form of list of DSL string that defines all the transformations
 def list_all_differences(old_api: ApiSignature, new_api: ApiSignature, constraint=""):
-    print("LIST ALL DIFFERENCES")
     list_differences = []
     # First, check name
     old_name, new_name = old_api.api_name, new_api.api_name
 
     if new_name == "":
         # dsl = "REMOVE_API " + old_name  + " IF upper HAS TYPE sometype"
-        dsl = "REMOVE_API " + old_name
+        dsl = "remove_api " + old_name
         list_differences.append(dsl)
         if constraint != "":
             for i in range(0, len(list_differences)):
@@ -275,28 +269,19 @@ def list_all_differences(old_api: ApiSignature, new_api: ApiSignature, constrain
 
     # Then check the parameter
     # Remove same parameter first
-    print("Signature")
-    print(old_api)
-    print(new_api)
-
     eliminate_same_param(old_api, new_api)
-
-    print("Signature After elimination")
-    print(old_api)
-    print(new_api)
 
     # 1. Get positional param to keyword param transformation
     positional_to_keyword_dict = get_positional_to_keyword_param(old_api, new_api)
     for key, value in positional_to_keyword_dict.items():
         if key.position > 0:
-            dsl = "POSITIONAL_TO_KEYWORD POSITION " + key.position.__str__() + " KEYWORD " + value.param_name + " FOR " + old_name
+            dsl = "positional_to_keyword position " + key.position.__str__() + " keyword " + value.param_name + " for " + old_name
             list_differences.append(dsl)
 
     # 2. Approximate name change for the parameter
     mapping_dict = get_api_mapping(old_api, new_api)
-    print("Parameter mapping dictionary")
     for key, value in mapping_dict.items():
-        dsl = "RENAME_PARAMETER " + key.param_name + " TO " + value.param_name + " FOR " + old_name
+        dsl = "rename_parameter " + key.param_name + " to " + value.param_name + " for " + old_name
         list_differences.append(dsl)
 
     # Process the API name change mapping
@@ -305,35 +290,30 @@ def list_all_differences(old_api: ApiSignature, new_api: ApiSignature, constrain
     # 3. Process leftover positional parameter and keyword parameter from old API
     #    The leftovers should be deleted
     list_deleted_pos_param = old_api.positional_param
-    print("Deleted pos param")
-    print(list_deleted_pos_param)
+
     # 4. Also process the leftover keyword parameter
     list_deleted_key_param = old_api.keyword_param
-    print("Deleted key param")
-    print(list_deleted_key_param)
+
     for param in list_deleted_key_param:
         removed_name = param.param_name
-        dsl = "REMOVE_KEYWORD_PARAM " + removed_name + " FOR " + old_name
+        dsl = "remove_parameter" + removed_name + " for " + old_name
         list_differences.append(dsl)
 
     # 5. Then, process the leftovers parameter from the new API
     #    The leftovers from the new API should be added (e.g. a new default parameter)
     list_new_param = new_api.positional_param + new_api.keyword_param
-    print("Added param")
-    print(list_new_param)
+
     for param in list_new_param:
         # If has default value
         if param.param_default_value:
-            dsl = "ADD_PARAM " + param.param_name + " WITH_VALUE " + param.param_default_value + " FOR " + old_name
+            dsl = "add_parameter " + param.param_name + " with_value " + param.param_default_value + " for " + old_name
             list_differences.append(dsl)
 
-    print("OLDIE")
-    print(old_name)
-    print(new_name)
+
 
     if old_name != new_name:
         # Add update name query
-        list_differences.append("RENAME_API " + old_name + " TO " + new_name)
+        list_differences.append("rename_method " + old_name + " to " + new_name)
         # list_differences.append("RENAME_API " + old_name + " TO " + new_name + " IF someparam HAS TYPE sometype")
     print("DSL LIST: ")
     print(list_differences)
@@ -346,11 +326,8 @@ def list_all_differences(old_api: ApiSignature, new_api: ApiSignature, constrain
 
 # Input: Transformation dictionary from the get_list_diff function and the filename
 # Output: file is transformed
-def apply_transformation(transformation_dictionary, filename, has_constraint=False, code_string="", constraint_parameter=""):
+def apply_transformation(transformation_dictionary, filename, has_constraint=False, code_string="", constraint_parameter="", output_path=""):
     list_position = list(transformation_dictionary.keys())
-    print(list_position)
-    # Read the file into lines
-    file_line_list = []
     with open(filename, "r", encoding="utf-8") as f:
         file_line_list = f.readlines()
         f.close()
@@ -359,7 +336,6 @@ def apply_transformation(transformation_dictionary, filename, has_constraint=Fal
     for i, line in reversed(list(enumerate(file_line_list))):
         # Special case if in last line
         if i == (len(file_line_list) - 1) and (i + 1) in list_position:
-            print("Last line")
             new_value = ""
             old_value, new_value_list = transformation_dictionary[i + 1]
             for value in new_value_list:
@@ -375,9 +351,7 @@ def apply_transformation(transformation_dictionary, filename, has_constraint=Fal
                 api_invocation = file_line_list[i]
 
                 # if the constraint parameter is positional
-                print("Constraint parameter: " + constraint_parameter)
                 if constraint_parameter.isnumeric():
-                    print("Constraint is numeric")
                     index_comma = [i for i, ltr in enumerate(api_invocation) if ltr == ","]
                     if constraint_parameter == "0":
                         param_index = api_invocation.find("(")
@@ -389,7 +363,6 @@ def apply_transformation(transformation_dictionary, filename, has_constraint=Fal
                             print(E.__str__())
                 else:
                     param_index = api_invocation.find(constraint_parameter)
-                print("Param index for constraint: " + param_index.__str__())
                 if param_index != -1:
                     api_invocation = api_invocation[param_index + len(constraint_parameter):-1]
                     parameter_string = api_invocation[0]
@@ -411,7 +384,6 @@ def apply_transformation(transformation_dictionary, filename, has_constraint=Fal
             file_line_list[i] = new_value
         # Special case if index is one
         elif i == 1 and i in list_position:
-            print("Special case for from import")
             old_value, new_value_list = transformation_dictionary[i]
             new_value = ""
             for value in new_value_list:
@@ -419,8 +391,6 @@ def apply_transformation(transformation_dictionary, filename, has_constraint=Fal
             file_line_list.insert(0, new_value)
         # if current index is available in list position
         elif i in list_position:
-            print("Replacing the value")
-            print(file_line_list[i])
             old_value, new_value_list = transformation_dictionary[i]
             new_value = ""
 
@@ -430,9 +400,6 @@ def apply_transformation(transformation_dictionary, filename, has_constraint=Fal
             num_to_delete = 0
             # Change the method into removing the old value little by little
             while len(old_value) > 0:
-                print("Masuk while")
-                print(old_value)
-                print(current_value)
                 # Should remove comments from current_value
                 index_comment = current_value.find('#')
                 if index_comment != -1:
@@ -453,19 +420,8 @@ def apply_transformation(transformation_dictionary, filename, has_constraint=Fal
                         num_to_delete += 1
                     break
 
-            print("Num to delete:")
-            print(num_to_delete)
-            # while current_value != old_value:
-            #     print("HERE")
-            #     print(current_value)
-            #     print(old_value)
-            #     current_value = current_value + re.sub('[()]', '', "".join(file_line_list[i + num_to_delete].split()))
-            #     num_to_delete += 1
             while num_to_delete > 1:
-
                 popped = file_line_list.pop(i)
-                print("Popped")
-                print(popped)
                 num_to_delete -= 1
             for value in new_value_list:
                 new_value = new_value + value + "\n"
@@ -480,7 +436,6 @@ def apply_transformation(transformation_dictionary, filename, has_constraint=Fal
             if has_constraint:
                 api_invocation = file_line_list[i - 1]
                 if constraint_parameter.isnumeric():
-                    print("Constraint is numeric")
                     index_comma = [i for i, ltr in enumerate(api_invocation) if ltr == ","]
                     if constraint_parameter == "0":
                         param_index = api_invocation.find("(")
@@ -513,11 +468,10 @@ def apply_transformation(transformation_dictionary, filename, has_constraint=Fal
                     new_value = new_value.replace("TEMPORARY_PARAMETER_NAME", parameter_string)
 
             file_line_list[i - 1] = new_value
-            print("Updating value:")
-            print(file_line_list[i - 1])
 
-    with open("updated_" + filename, "w", encoding="utf-8") as f:
-        print("Before printing the updated file")
+    if output_path == "":
+        output_path = "updated_" + filename
+    with open(output_path, "w", encoding="utf-8") as f:
         for line in file_line_list:
             f.write(line)
         f.close()

@@ -37,10 +37,7 @@ from input_utils import ApiSignature
 # Input: List of DSL commands, filename to be processed with the commands, and api_name
 # Output: Tree, List Edited Lines
 def run_DSL(list_DSL, filename, api_signature: ApiSignature):
-    print("DSL COMMANDS: ")
     original_api_name = api_signature.api_name
-    for DSL in list_DSL:
-        print(DSL)
     with open(filename, "r", encoding="utf-8") as file:
         tree = ast.parse(file.read())
         api_name = api_signature.api_name
@@ -51,70 +48,56 @@ def run_DSL(list_DSL, filename, api_signature: ApiSignature):
         for dsl in list_DSL:
             # Positional skip is used to mitigate the effect of the previous-existing positional param being removed
             # For example, due to positional_to_keyword or positional_param_remove
-
+            dsl = dsl.lstrip().rstrip()
             list_completed_api = get_list_API(tree, api_signature)
             list_line_number = get_list_line_number(list_completed_api)
-            print("LIST COMPLETED API: " + list_completed_api.__str__())
             splitted_dsl = dsl.split(" ")
-            print("LIST EDITED LINE: ")
-            print(list_edited_line.__str__())
-            if splitted_dsl[0] == "RENAME_API":
-                print("RENAMING API")
+            if splitted_dsl[0] == "rename_method":
                 new_name = splitted_dsl[3]
                 nameTransformer = ApiNameTransformer(api_name, new_name, list_line_number, list_completed_api)
                 dict_change = nameTransformer.transform(tree)
-
                 for key, value in dict_change.items():
                     list_edited_line[key] = value
                 # Convert the API name into the new name for future detection
                 api_name = new_name
                 api_signature.api_name = new_name
-            elif splitted_dsl[0] == "ADD_PARAM":
-                print("ADDING PARAM")
+            elif splitted_dsl[0] == "add_parameter":
                 param_name = splitted_dsl[1]
                 param_value = splitted_dsl[3]
                 # currently default to call until there is new way to detect the type
                 param_type = "call"
-                addParamTransformer = AddNewParameter(api_name, param_name, param_type, param_value, list_line_number)
+                addParamTransformer = AddNewParameter(api_name, param_name, param_type, param_value, list_line_number, list_completed_api)
                 dict_change = addParamTransformer.transform(tree)
                 for key, value in dict_change.items():
                     list_edited_line[key] = value
-            elif splitted_dsl[0] == "RENAME_PARAMETER":
-                print("CHANGE PARAMETER NAME")
+            elif splitted_dsl[0] == "rename_parameter":
                 old_param_name = splitted_dsl[1]
                 new_param_name = splitted_dsl[3]
                 # currently default to call until there is new way to detect the type
-                renameParamTransformer = KeywordParamChanger(api_name, old_param_name, new_param_name, list_line_number)
+                renameParamTransformer = KeywordParamChanger(api_name, old_param_name, new_param_name, list_line_number, list_completed_api)
                 dict_change = renameParamTransformer.transform(tree)
                 for key, value in dict_change.items():
                     list_edited_line[key] = value
-            elif splitted_dsl[0] == "POSITIONAL_TO_KEYWORD":
-                print("POSITIONAL TO KEYWORD")
+            elif splitted_dsl[0] == "positional_to_keyword":
                 param_position = splitted_dsl[2]
                 param_keyword = splitted_dsl[4]
-                positionalToKeywordTransformer = PositionalToKeyword(api_name, int(param_position) - positional_skip, param_keyword, list_line_number)
+                positionalToKeywordTransformer = PositionalToKeyword(api_name, int(param_position) - positional_skip, param_keyword, list_line_number, list_completed_api)
                 dict_change = positionalToKeywordTransformer.transform(tree)
                 positional_skip += 1
                 for key, value in dict_change.items():
                     list_edited_line[key] = value
-            elif splitted_dsl[0] == "REMOVE_KEYWORD_PARAM":
-                print("REMOVE KEYWORD PARAM")
+            elif splitted_dsl[0] == "remove_parameter":
                 deleted_keyword = splitted_dsl[1]
-                keywordRemover = KeywordParamRemover(api_name, deleted_keyword, list_line_number)
+                keywordRemover = KeywordParamRemover(api_name, deleted_keyword, list_line_number, list_completed_api)
                 dict_change = keywordRemover.transform(tree)
                 for key, value in dict_change.items():
                     list_edited_line[key] = value
-            elif splitted_dsl[0] == "REMOVE_API":
-                print("REMOVE API USAGE")
-                apiRemover = RemoveAPI(api_name, list_line_number)
+            elif splitted_dsl[0] == "remove_api":
+                apiRemover = RemoveAPI(api_name, list_line_number, list_completed_api)
                 dict_change = apiRemover.transform(tree)
-                print("IMPORTANT DICT CHANGE")
-                print(dict_change)
                 for key, value in dict_change.items():
                     list_edited_line[key] = value
             # Process the constraint here
-
-            print("Splitted DSL: " + splitted_dsl.__str__())
             ifIndex = -1
             for index, element in enumerate(splitted_dsl):
                 if element.lower() == "IF".lower():
@@ -122,7 +105,6 @@ def run_DSL(list_DSL, filename, api_signature: ApiSignature):
                     ifIndex = index
                     break
             # Need to add value constraint here
-            print("Does this have constraint? " + hasConstraint.__str__())
             code_string = ""
             if hasConstraint:
                 # Check if the constraint has not
@@ -130,32 +112,21 @@ def run_DSL(list_DSL, filename, api_signature: ApiSignature):
                 if splitted_dsl[ifIndex + 1].lower() == "NOT".lower():
                     hasNot = True
                     ifIndex = ifIndex + 1
-                print("Does this has not? " + hasNot.__str__())
                 parameter_name = splitted_dsl[ifIndex + 1]
                 constraint_String = splitted_dsl[ifIndex + 2] + " " + splitted_dsl[ifIndex + 3]
                 not_string = ""
                 if hasNot:
                     not_string = "not "
                 if constraint_String.lower() == "HAS TYPE".lower():
-                    print("Type constraint")
                     type_string = splitted_dsl[ifIndex + 4]
                     code_string = "if "+ not_string + "isinstance(" + "TEMPORARY_PARAMETER_NAME" + ", " + type_string + "):"
                 elif constraint_String.lower() == "HAS VALUE".lower():
-                    print("Value constraint")
                     # value_string = splitted_dsl[ifIndex + 4]
                     value_string = ""
                     for i in range(ifIndex + 4, len(splitted_dsl)):
                         value_string = value_string + " " + splitted_dsl[i]
                     code_string = "if " + not_string + "TEMPORARY_PARAMETER_NAME" + value_string + ":"
 
-
-
-        print("Finished processing the DSL")
-        print("List edited line: ")
-        for key, value in list_edited_line.items():
-            print("Line - " + key.__str__() + ": " + unparse(value))
-        print("Constraint string:")
-        print(code_string)
         api_signature.api_name = original_api_name
         return tree, list_edited_line, hasConstraint, code_string, parameter_name
 
@@ -167,7 +138,7 @@ def get_list_diff(tree, list_diff, filename):
     try:
         list_position.remove(0)
     except:
-        print("No import add")
+        pass
     old_tree = ast.parse(open(filename, encoding="utf-8").read())
 
     with open("old_file.py", "w", encoding="utf-8") as old_open:
@@ -178,8 +149,6 @@ def get_list_diff(tree, list_diff, filename):
 
     old_list = unparse(old_tree).split("\n")
     new_list = unparse(tree).split("\n")
-
-    print("List position before loop: " + list_position.__str__())
     diff_dict = {}
     i = 0
     position = 1
@@ -189,124 +158,21 @@ def get_list_diff(tree, list_diff, filename):
             new_list.pop(i)
             position += 1
         elif new_list[i][0:4] == "from":
-            print("FROM STATEMENT DETECTED")
             # Special case if import statement in the new key
             diff_dict[1] = "", [new_list.pop(i)]
             position += 1
         else:
             old_key = old_list.pop(i)
             new_key = [new_list.pop(i)]
-
-            # while current_old != current_new:
-            #     new_key.append(new_list.pop(i))
-            #     current_new = new_list[i]
-            #     print("DCGH")
-            #     print(old_key)
-            #     print(new_key)
-            #     print("ABCD")
-            #     print(current_new)
-            #     print(current_old)
-
-            # If cannot pop, probably an import statement, so just put it on front 1
-
-
             try:
                 actual_position = list_position.pop(0)
             except:
                 actual_position = 1
             # while len(list_position) > 0 and list_position[0] < position:
             #     actual_position = list_position.pop(0)
-            print("LISTPOST")
-
-            print(list_position)
             if "EMPTYSHOULDBEDELETED" in new_key.__str__():
-                print("NEW KEY SHOULD BE EMPTY")
                 diff_dict[actual_position] = old_key, ["pass"]
             else:
-                print(new_key)
                 diff_dict[actual_position] = old_key, new_key
             position += 1
     return diff_dict
-
-#
-# # The source file is the 1st argument to the script
-# if len(sys.argv) < 4:
-#     print('usage: refer to help/readme. use DSL.py help for list of available commands')
-#     sys.exit(1)
-#
-# DSL_MODE = sys.argv[1]
-# ORIGINAL_API_NAME = sys.argv[2]
-# FILENAME = sys.argv[3]
-#
-# if DSL_MODE == "change_param_name":
-#     # Change param name
-#     # Must have 4 additional arguments (sys.argv len must be 6)
-#     if len(sys.argv) != 6:
-#         print("usage: change_param_name fully_qualified_api_name filename old_param_name new_param_name")
-#         sys.exit(1)
-#     else:
-#         print("Changing parameter name")
-#         OLD_PARAM_NAME = sys.argv[4]
-#         NEW_PARAM_NAME = sys.argv[5]
-#
-#
-# if DSL_MODE == "positional_to_keyword":
-#     # Positional parameter to keyword parameter
-#     # Must have 4 additional arguments (sys.argv len must be 6)
-#     if len(sys.argv) != 6:
-#         print("usage: positional_to_keyword fully_qualified_api_name filename parameter_position keyword_param_name")
-#         sys.exit(1)
-#     else:
-#         try:
-#             PARAMETER_POSITION = int(sys.argv[4])
-#         except Exception:
-#             print("usage: positional_to_keyword fully_qualified_api_name filename parameter_position keyword_param_name")
-#             sys.exit(1)
-#         KEYWORD_PARAMETER_NAME = sys.argv[5]
-#         print("Converting positional keyword")
-#
-#
-# if DSL_MODE == "remove_param":
-#     # Remove parameter
-#     # Must have 3 additional arguments (sys.argv len must be 5)
-#     if len(sys.argv) != 5:
-#         print("usage: remove_param fully_qualified_api_name filename keyword_param_name")
-#         print("usage: remove_param fully_qualified_api_name filename positional_param_position")
-#         sys.exit(1)
-#     else:
-#         if sys.argv[4].isnumeric():
-#             # removal of positional parameter
-#             REMOVED_PARAM = int(sys.argv[4])
-#         else:
-#             REMOVED_PARAM = sys.argv[4]
-#         print("Removing parameter")
-#
-# if DSL_MODE == "change_method_name":
-#     # Change method name
-#     # Must have 3 additional arguments (sys.argv len must be 5)
-#     if len(sys.argv) != 5:
-#         print("usage: change_method_name filename old_fully_qualified_name new_fully_qualified_name")
-#         sys.exit(1)
-#     else:
-#         NEW_API_NAME = sys.argv[4]
-#         print("Changing method name")
-#
-# if DSL_MODE == "complex_transform":
-#     # Complex transformation
-#     # Must have 3 additional arguments (sys.argv len must be 5)
-#     if len(sys.argv) != 5:
-#         print("usage: complex_transform fully_qualified_name filename example_filename")
-#         sys.exit(1)
-#     else:
-#         EXAMPLE_FILE_NAME = sys.argv[4]
-#
-#         if os.path.isfile(EXAMPLE_FILE_NAME):
-#             print("Complex change!")
-#         else:
-#             print("File %s does not exist in the path" %EXAMPLE_FILE_NAME)
-#             print("Exitting...")
-#             sys.exit(1)
-#         # Check if the file exist first
-#
-# # for item in sys.argv[1:]:
-# #     print(item)

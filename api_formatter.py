@@ -8,21 +8,10 @@ class AssignmentVisitor(ast.NodeVisitor):
         self.assignment_dictionary = {}
 
     def visit_Assign(self, node: Assign):
-        # print(unparse(node))
-        # print(ast.dump(node))
         assignment_value = node.value
         if (isinstance(assignment_value, Call) or isinstance(assignment_value, Attribute) or isinstance(assignment_value, Name)) \
                 and isinstance(node.targets[0], Name):
-            # Special case if target is attribute
-            # It seems complex and unlikely, so skip if the target is an instance of attribute
-            # if (isinstance(node.targets[0], Attribute)):
-            #     assignment_target = node.targets[0].id
-            # else:
-            #     assignment_target = node.targets[0].id
-
             assignment_target = node.targets[0].id
-            # print(assignment_target)
-            # print(unparse(assignment_value))
             api_name, api_keywords = separate_api_parameter(assignment_value)
 
             dict_content = {}
@@ -31,20 +20,12 @@ class AssignmentVisitor(ast.NodeVisitor):
             dict_content["line_no"] = node.lineno
             self.assignment_dictionary[assignment_target] = []
             self.assignment_dictionary[assignment_target].append(dict_content)
-        #
-        # print("Assignment target: " + assignment_target)
-        # print("Assignment visit: " + unparse(node))
-        # print("Name visit: " + self.assignment_dictionary[assignment_target][0]["name"])
-        # print("Keywords visit: " + self.assignment_dictionary[assignment_target][0]["key"].__str__())
-        # print("Line Number: " + self.assignment_dictionary[assignment_target][0]["line_no"].__str__())
 
 class ImportVisitor(ast.NodeVisitor):
     def __init__(self):
         self.import_dictionary = {}
 
     def visit_Import(self, node):
-
-
         import_path = node.names[0].name
         import_alias = node.names[0].asname
         if import_alias is not None:
@@ -75,99 +56,120 @@ class ApiFormatterVisitor(ast.NodeVisitor):
         self.api_only_name = api_name.split(".")[-1]
 
     def visit_Call(self, node: Call):
-        has_assignment_change = False
-        has_multitude_change = False
-        api_name, keywords = separate_api_parameter(node)
-        name_split = api_name.split(".")
-        outermost_name = name_split[0]
-        hasChange = True
-        loop_flag = 0
-        while hasChange:
-            loop_flag += 1
-            if loop_flag > 20:
-                hasChange = False
-            # first check assignment
-            original_form = outermost_name
-            if outermost_name in self.ass_dict:
-                node_lineno = node.lineno
-                # get the correct assignment
-                previous_element = self.ass_dict[outermost_name][0]
-                for element in self.ass_dict[outermost_name]:
-                    element_lineno = element["line_no"]
-                    if element_lineno < node_lineno:
-                        previous_element = element
-                    else:
-                        break
-                # Use the previous element value to replace the node name
-                splitted = previous_element["name"].split(".")
-                name_split.pop(0)
-                # insert from the end to the beginning
-                for item in reversed(splitted):
-                    name_split.insert(0, item)
-                outermost_name = name_split[0]
-                if has_assignment_change:
-                    has_multitude_change = True
-                has_assignment_change = True
-            elif outermost_name in self.from_dict:
-                previous_element = self.from_dict[outermost_name]
-                splitted = previous_element.split(".")
-                name_split.pop(0)
-                # insert from the end to the beginning
-                for item in reversed(splitted):
-                    name_split.insert(0, item)
-                outermost_name = name_split[0]
-                if has_assignment_change:
-                    has_multitude_change = True
-            elif outermost_name in self.imp_dict:
-                previous_element = self.imp_dict[outermost_name]
-                splitted = previous_element.split(".")
-                name_split.pop(0)
-                # insert from the end to the beginning
-                for item in reversed(splitted):
-                    name_split.insert(0, item)
-                outermost_name = name_split[0]
-                if has_assignment_change:
-                    has_multitude_change = True
+        listNode = []
+        listNode.append(node)
+        isFirst = True
+        for argument in node.args:
+            if type(argument) == ast.Call:
+                argument.lineno = node.lineno
+                listNode.append(argument)
+            elif type(argument) == ast.Subscript:
+                argument = argument.value
+                argument.lineno = node.lineno
+                listNode.append(argument)
+            elif type(argument) == ast.List:
+                for element in argument.elts:
+                    if type(element) == ast.Call:
+                        element.lineno = node.lineno
+                        listNode.append(element)
+        for keyword in node.keywords:
+            argument = keyword.value
+            if type(argument) == ast.Call:
+                argument.lineno = node.lineno
+                listNode.append(argument)
+            elif type(argument) == ast.Subscript:
+                argument = argument.value
+                argument.lineno = node.lineno
+                listNode.append(argument)
+            elif type(argument) == ast.List:
+                for element in argument.elts:
+                    if type(element) == ast.Call:
+                        element.lineno = node.lineno
+                        listNode.append(element)
+        for node in listNode:
+            has_assignment_change = False
+            has_multitude_change = False
+            api_name, keywords = separate_api_parameter(node)
+            name_split = api_name.split(".")
+            outermost_name = name_split[0]
+            hasChange = True
+            loop_flag = 0
+
+            while hasChange:
+                loop_flag += 1
+                if loop_flag > 20:
+                    hasChange = False
+                # first check assignment
+                original_form = outermost_name
+                if outermost_name in self.ass_dict:
+                    node_lineno = node.lineno
+                    # get the correct assignment
+                    previous_element = self.ass_dict[outermost_name][0]
+                    for element in self.ass_dict[outermost_name]:
+                        element_lineno = element["line_no"]
+                        if element_lineno < node_lineno:
+                            previous_element = element
+                        else:
+                            break
+                    # Use the previous element value to replace the node name
+                    splitted = previous_element["name"].split(".")
+                    name_split.pop(0)
+                    # insert from the end to the beginning
+                    for item in reversed(splitted):
+                        name_split.insert(0, item)
+                    outermost_name = name_split[0]
+                    if has_assignment_change:
+                        has_multitude_change = True
+                    has_assignment_change = True
+                elif outermost_name in self.from_dict:
+                    previous_element = self.from_dict[outermost_name]
+                    splitted = previous_element.split(".")
+                    name_split.pop(0)
+                    # insert from the end to the beginning
+                    for item in reversed(splitted):
+                        name_split.insert(0, item)
+                    outermost_name = name_split[0]
+                    if has_assignment_change:
+                        has_multitude_change = True
+                elif outermost_name in self.imp_dict:
+                    previous_element = self.imp_dict[outermost_name]
+                    splitted = previous_element.split(".")
+                    name_split.pop(0)
+                    # insert from the end to the beginning
+                    for item in reversed(splitted):
+                        name_split.insert(0, item)
+                    outermost_name = name_split[0]
+                    if has_assignment_change:
+                        has_multitude_change = True
+                else:
+                    hasChange = False
+                # To make sure that there are no infinite loop
+                if outermost_name == original_form:
+                    hasChange = False
+
+
+
+
+            api_object = {}
+            api_new_name = name_split[0]
+            name_split.pop(0)
+            for part in name_split:
+                api_new_name = api_new_name + "." + part
+
+            if has_assignment_change and self.api_only_name not in api_new_name.split(".")[-1]:
+                if self.api_only_name in api_new_name:
+                    pass
             else:
-                hasChange = False
-            # To make sure that there are no infinite loop
-            if outermost_name == original_form:
-                hasChange = False
-
-
-
-
-        api_object = {}
-        api_new_name = name_split[0]
-        name_split.pop(0)
-        for part in name_split:
-            api_new_name = api_new_name + "." + part
-
-
-
-        # THIS IS FOR SUPER ACCURATE MEASUREMENT
-        if has_assignment_change and self.api_only_name not in api_new_name.split(".")[-1]:
-            if self.api_only_name in api_new_name:
-                print("EORORORORROEOREORORE")
-        else:
-            api_object["name"] = api_new_name
-            api_object["key"] = keywords
-            api_object["line_no"] = node.lineno
-            api_object["code"] = unparse(node)
-            self.return_list.append(api_object)
-
-
-        # INACCURATE VERSION
-        # api_object["name"] = api_new_name
-        # api_object["key"] = keywords
-        # api_object["line_no"] = node.lineno
-        # api_object["code"] = unparse(node)
-        # self.return_list.append(api_object)
-        # getOuterMostApi(node)
-        # TODO: Think about how should we convert / replace the name
-        # TODO: String replacement should be easier, but can we do that? refer to DLocator
-        # TODO: MIGHT NOT NEED TO REPLACE SINCE WE ONLY THIS API FORMAT FOR FILTER?
-        # TODO: THINK ABOUT CHANGE OF API CALL PARENT REFERENCE deprecation, maybe we need to process the import
+                api_object["name"] = api_new_name
+                api_object["key"] = keywords
+                api_object["line_no"] = node.lineno
+                api_object["code"] = unparse(node)
+                if isFirst:
+                    api_object["type"] = "MAIN_NODE"
+                    isFirst = False
+                else:
+                    api_object["type"] = "ARGUMENT"
+                self.return_list.append(api_object)
 
 def separate_api_parameter(node):
     # Loop through the given node from assignment to get all the API Call and keyword
@@ -189,7 +191,6 @@ def separate_api_parameter(node):
         if key != last_element:
             separated_signature += ", "
     return api_name, api_keywords
-
 
 ##
 # Tree is the AST of the complete file
