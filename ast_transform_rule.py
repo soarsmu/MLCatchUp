@@ -18,7 +18,7 @@ def get_list_API(tree, api_signature: ApiSignature):
     list_completed_api = []
     for api in list_api:
         if api_name.strip() in api["name"].strip():
-            temp = api["name"].strip().replace(api_name.strip(), '')
+            temp = api["name"].strip().replace(api_name.strip, '')
             list_completed_api.append(api)
     return list_completed_api
 

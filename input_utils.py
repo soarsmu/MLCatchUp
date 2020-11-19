@@ -100,11 +100,6 @@ def parse_api_signature(api_string):
     for param in key_param:
         if not(param.isspace() or not param):
             stripped_key_param.append(param.strip())
-
-    # print(api_name)
-    # print(stripped_pos_param)
-    # print(stripped_key_param)
-
     # Convert all the API parameter into api_parameter class
     return_pos_param = []
     # Add the position
@@ -141,8 +136,6 @@ def is_same_param(param1:ApiParameter, param2:ApiParameter):
         else:
             # different type
             return False
-
-
     else:
         return False
 
@@ -205,7 +198,6 @@ def get_api_mapping(old_api: ApiSignature, new_api: ApiSignature):
 
     # TODO: make an advanced API mapper which may incorporate NLP / semantic understanding
     # Map based on type first
-
     # Map the positional param first
     i = 0
     while i < len(old_pos_param):
@@ -285,7 +277,6 @@ def list_all_differences(old_api: ApiSignature, new_api: ApiSignature, constrain
         list_differences.append(dsl)
 
     # Process the API name change mapping
-    
 
     # 3. Process leftover positional parameter and keyword parameter from old API
     #    The leftovers should be deleted
@@ -309,14 +300,10 @@ def list_all_differences(old_api: ApiSignature, new_api: ApiSignature, constrain
             dsl = "add_parameter " + param.param_name + " with_value " + param.param_default_value + " for " + old_name
             list_differences.append(dsl)
 
-
-
     if old_name != new_name:
         # Add update name query
         list_differences.append("rename_method " + old_name + " to " + new_name)
         # list_differences.append("RENAME_API " + old_name + " TO " + new_name + " IF someparam HAS TYPE sometype")
-    print("DSL LIST: ")
-    print(list_differences)
     if constraint != "":
         for i in range(0, len(list_differences)):
             list_differences[i] = list_differences[i] + " " + constraint

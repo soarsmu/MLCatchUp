@@ -14,20 +14,21 @@ if __name__ == "__main__":
     old_signature_string = sys.argv[1]
     new_signature_string = sys.argv[2]
     folder_path = sys.argv[3]
+    # If contain constraint
+    if len(sys.argv) > 4:
+        constraint = sys.argv[4]
+    else:
+        constraint = ""
+
     old_signature = parse_api_signature(old_signature_string)
     new_signature = parse_api_signature(new_signature_string)
-    dsl_list = list_all_differences(old_signature, new_signature)
+    dsl_list = list_all_differences(old_signature, new_signature, constraint)
     # get list of files
     list_file = [join(folder_path, f) for f in listdir(folder_path) if isfile(join(folder_path, f))]
     # list_path = []
     # for file in list_file:
     #     list_path.append(join(folder_path, f))
     for file in list_file:
-        print("Processing file: " + file)
         modified_tree, list_change, hasConstraint, code_string, parameter_name = run_DSL(dsl_list, file, old_signature)
         file_change_dictionary = get_list_diff(modified_tree, list_change, file)
-        print("File change dictionary")
-        print(file_change_dictionary)
         apply_transformation(file_change_dictionary, file, hasConstraint, code_string, parameter_name)
-        print()
-        print()

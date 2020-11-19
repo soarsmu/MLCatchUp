@@ -24,3 +24,6 @@ Python main.py --infer "torch.gels(input: Tensor, A: Tensor, out=None)" "torch.l
 ``
 Python main.py --transform --dsl torch_gels.dsl --input input_file.py --output updated_file.py
 ``
+
+## Requirements:
+- astunparse==1.6.3
