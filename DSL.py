@@ -175,4 +175,6 @@ def get_list_diff(tree, list_diff, filename):
             else:
                 diff_dict[actual_position] = old_key, new_key
             position += 1
+    os.remove("old_file.py")
+    os.remove("new_file.py")
     return diff_dict
